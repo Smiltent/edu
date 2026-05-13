@@ -97,7 +97,7 @@ table {
 
 table, th, td {
     color: var(--text);
-    border: 1px solid var(--dgray);
+    border: 2px solid var(--dgray);
 }
 
 th, td {
@@ -276,6 +276,11 @@ form, select{
 
     #tableContainer table td:empty {
         display: none;
+    }
+
+    td {
+        display: flex;
+        flex-direction: row;
     }
 
     th:not(:first-child),
