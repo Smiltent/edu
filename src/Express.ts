@@ -66,6 +66,12 @@ export default class WebServer {
         this.app.use(cors())
         
         this.app.use(root)
+
+        if (process.env.TRACKING_CODE !== "0") {
+            this.app.locals.tracking = process.env.TRACKING_CODE
+        } else {
+            this.app.locals.tracking = ""
+        }
             
         this.app.locals.metaUrl = process.env.META_URL || "https://example.com"
         this.app.locals.metaTitle = process.env.META_TITLE || "School Name"
