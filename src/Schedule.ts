@@ -66,13 +66,11 @@ export default class Schedule {
         )
 
         const bulkOps: any[] = []
+        const seenKeys = new Set<string>()
             
         for (const card of this.index.cards) {
             // get lesson information
             const lesson = this.index.lessons[card.lessonid]
-
-            // period division, much more easier to work with
-            var period = Math.ceil(card.period / 2) 
 
             // index information
             const teachers = lesson.teacherids?.map((id: string) => this.index.teachers[id])
@@ -123,6 +121,8 @@ export default class Schedule {
                         }
 
                         const key = `${period}-${day}-${clazz.name}-${groupName}`
+                        seenKeys.add(key)
+
                         const existing = existingMap.get(key)
                         const changes: any[] = []
 
@@ -160,6 +160,17 @@ export default class Schedule {
                 }
             } catch (err) {
                 console.error(`Error trying to store Lesson Data: ${err}`)
+            }
+        }
+
+        // delete existing lessons, as overriding them wasn't enough
+        for (const [key, existing] of existingMap.entries()) {
+            if (!seenKeys.has(key)) {
+                bulkOps.push({
+                    deleteOne: {
+                        filter: { _id: existing._id }
+                    }
+                })
             }
         }
 
