@@ -3,6 +3,7 @@ import { pLimit } from "@/util/pLimit"
 import checkDiff from "@/util/diff"
 import Schedule from "./Schedule"
 import axios from "axios"
+import cache from "@/util/cache"
 
 import RawScheduleData from "@/models/RawScheduleData.ts"
 import Week from "@/models/Week.ts"
@@ -71,6 +72,7 @@ export default class Scraper {
                 await parser.i(week.tt_num)
                 await parser.storeLessonData()
             })))
+            cache.invalidate()
         } catch (err) {
             console.error(`Failed to store all weeks to database: ${err}`)
         }

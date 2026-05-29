@@ -45,29 +45,22 @@ export const settings = {
 //   utils
 //
 async function getSchoolData(type, ignore, searchable) {
-    await fetch(`${settings.url}/weeks/list`)
-        .then(res => res.json())
-        .then((data) => {
-            if (!ignore[0]) {
-                settings.values.week = data.currentWeek
-            }
+    const [weeksData, mainData] = await Promise.all([
+        fetch(`${settings.url}/weeks/list`).then(r => r.json()),
+        fetch(`${settings.url}/${type}/list`).then(r => r.json())
+    ])
 
-            data["data"].forEach(w => {
-                settings.weekDayNames[w.id] = w.days ?? ["0", "1", "2", "3", "4"]
-            })
+    if (!ignore[0]) settings.values.week = weeksData.currentWeek
 
-            setWeekOptions(settings.elements.week, data["data"], data.currentWeek)
-        })
+    weeksData.data.forEach(w => {
+        settings.weekDayNames[w.id] = w.days ?? ["0", "1", "2", "3", "4"]
+    })
 
-    await fetch(`${settings.url}/${type}/list`)
-        .then(res => res.json())
-        .then((data) => {
-            if (!ignore[1]) {
-                settings.values.main = data["data"][0]
-            }
+    setWeekOptions(settings.elements.week, weeksData.data, weeksData.currentWeek)
 
-            setMainOptions(settings.elements.main, data["data"], ignore[1] ? settings.values.main : null, searchable)
-        })
+    if (!ignore[1]) settings.values.main = mainData.data[0]
+
+    setMainOptions(settings.elements.main, mainData.data, ignore[1] ? settings.values.main : null, searchable)
 }
 
 async function getWeekData(type, week, getter) {

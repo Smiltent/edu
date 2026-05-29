@@ -1,69 +1,63 @@
 
 import Lesson from '@/models/Lesson'
 import Week from '@/models/Week'
+import cache from '@/util/cache'
 
 import { scraper } from '@/index'
 import { Router } from 'express'
 const router = Router()
 
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-/**
- * Helper functions
- */
-async function getWeekId(week: string) {
-    const data = await Week.findOne({ id: week })
-    return data?._id ?? null
+const TTL = 5 * 60 * 1000
+
+async function getWeekDoc(week: string) {
+    const cacheKey = `week-doc-${week}`
+    const hit = cache.get(cacheKey)
+    if (hit) return hit
+
+    const doc = await Week.findOne({ id: week })
+    if (doc) cache.set(cacheKey, doc, TTL)
+    return doc
 }
 
-/** 
- * List all the teacher names
- * @returns Teachers list
-*/
 router.get('/list', async (_, res) => {
     try {
-        // get data from db
-        const week = await getWeekId(scraper.currentWeek)
-        const teachers = await Lesson.distinct('teachers', { week })
+        const hit = cache.get('teacher-list')
+        if (hit) return res.json(hit)
 
-        const data = [...new Set(teachers.flat())]
-        // return data
-        return res.json({
-            success: true,
-            data
-        })
+        const weekDoc = await getWeekDoc(scraper.currentWeek)
+        const data = await Lesson.distinct('teachers', { week: weekDoc?._id })
+
+        const body = { success: true, data }
+        cache.set('teacher-list', body, TTL)
+        return res.json(body)
     } catch (err) {
         console.error(`Error listing all teacher names: ${err}`)
         return res.status(500).json({ success: false, data: 'Internal Server Error' })
     }
 })
 
-/** 
- * Get class data for a specific week
- * @param id Class
- * @param week Week number
- * @returns Class data for that week
-*/
 router.get('/:teacher/week/:week', async (req, res) => {
     const { teacher, week } = req.params
     if (!teacher) return res.status(400).json({ success: false, data: 'Missing teacher' })
     if (!week) return res.status(400).json({ success: false, data: 'Missing week number' })
 
     try {
-        const weekDoc = await Week.findOne({ id: week })
-        if (!weekDoc) return res.status(404).json({ success: false, data: 'Week not found' }) 
+        const cacheKey = `teacher-${week}-${teacher}`
+        const hit = cache.get(cacheKey)
+        if (hit) return res.json(hit)
 
-        // get data from db
+        const weekDoc = await getWeekDoc(week)
+        if (!weekDoc) return res.status(404).json({ success: false, data: 'Week not found' })
+
         const lessons = await Lesson.find({ week: weekDoc._id, teachers: teacher })
             .select('-_id -__v -week')
             .sort({ day: 1, period: 1 })
 
-        if (!lessons.length) return res.status(404).json({ success: false, data: 'No data found for that week (not saved)' }) 
+        if (!lessons.length) return res.status(404).json({ success: false, data: 'No data found for that week (not saved)' })
 
-        // return data
-        return res.json({
-            success: true,
-            lessons
-        })
+        const body = { success: true, lessons }
+        cache.set(cacheKey, body, TTL)
+        return res.json(body)
     } catch (err) {
         console.error(`Error fetching specific week (${week}) for ${teacher}: ${err}`)
         return res.status(500).json({ success: false, data: 'Internal Server Error' })

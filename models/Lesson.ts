@@ -18,5 +18,8 @@ const LessonSchema = new Schema({
 })
 
 LessonSchema.index({ week: 1, period: 1, day: 1, class: 1, group: 1 })
+LessonSchema.index({ week: 1, class: 1 })
+LessonSchema.index({ week: 1, teachers: 1 })
+LessonSchema.index({ week: 1, classroom: 1 })
 
 export default mongoose.model('Lesson', LessonSchema)
