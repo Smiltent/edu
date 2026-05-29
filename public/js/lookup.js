@@ -12,9 +12,9 @@ export const settings = {
         main: null
     },
     formats: {
-        class: `%name%<br>(%classroom% | %teacher%)`,
-        teacher: `%name%<br>(%classroom% | %class%)`,
-        classroom: `%name%<br>(%teacher% | %class%)`
+        class: `<span>%name%</span><br><span>%classroom% %teacher%</span>`,
+        teacher: `%name%<br>%classroom% %class%`,
+        classroom: `%name%<br>%teacher% %class%`
     },
     coloring: { 
         class: '%name%-%teacher%',
@@ -138,7 +138,6 @@ function createTable(type, container) {
 
     // create table element
     const table = document.createElement('table')
-    table.style.borderCollapse = 'collapse'
     table.style.width = '100%'
 
     // determine max lessons in a day for header
@@ -166,7 +165,8 @@ function createTable(type, container) {
     const tbody = document.createElement('tbody')
 
     // insert lessons and days
-    Object.values(settings.weekData.data).forEach(day => {
+    const days = Object.values(settings.weekData.data)
+    days.forEach((day, dayIndex) => {
         const row = document.createElement('tr')
 
         const dayCell = document.createElement('td')
@@ -179,42 +179,55 @@ function createTable(type, container) {
 
         day.data.forEach((lessons, index) => {
             const cellContainer = document.createElement('td')
+            cellContainer.classList.add("lesson-cell")
 
             if (lessons != null) {
-                lessons.forEach((lesson, i) => {
-                    const cell = document.createElement('div')
-                    cell.classList.add("lesson-cell")
+                const isGrouped = lessons.length > 1
 
-                    cell.style.backgroundColor = randomColorFromString(
+                if (isGrouped) {
+                    cellContainer.style.overflow = 'hidden'
+                    cellContainer.style.padding = '0'
+                }
+
+                lessons.forEach((lesson, i) => {
+                    const target = isGrouped ? document.createElement('div') : cellContainer
+
+                    target.style.backgroundColor = randomColorFromString(
                         settings.coloring[type]
                             .replace('%name%', lesson.name)
                             .replace('%teacher%', lesson.teacher)
                             .replace('%class%', lesson.class)
                     )
 
+                    if (isGrouped) {
+                        target.className = 'lesson-group-entry'
+                        const isFirst = i === 0
+                        const isLast = i === lessons.length - 1
+                        target.style.borderRadius = isFirst
+                            ? '0.25rem 0.25rem 0 0'
+                            : isLast
+                                ? '0 0 0.25rem 0.25rem'
+                                : '0'
+                    }
+
                     const groupBadge = lesson.group
                         ? `<span class="group-badge">${lesson.group}</span> `
                         : ''
 
-                    cell.innerHTML = groupBadge + settings.formats[type]
+                    target.innerHTML = groupBadge + settings.formats[type]
                         .replace('%name%', lesson.name)
                         .replace('%teacher%', `<a class="colorText" href="/teacher?teacher=${encodeURIComponent(lesson.teacher)}">${lesson.teacher}</a>`)
                         .replace('%class%', `<a class="colorText" href="/class?class=${encodeURIComponent(lesson.class)}">${lesson.class}</a>`)
                         .replace('%classroom%', `<a class="colorText" href="/classroom?classroom=${encodeURIComponent(lesson.classroom)}">${lesson.classroom}</a>`)
 
-                    cellContainer.appendChild(cell)
+                    if (isGrouped) cellContainer.appendChild(target)
                 })
             } else {
                 const hasLessonAfter = day.data.slice(index + 1).some(l => l !== null)
 
                 if (hasLessonAfter) {
-                    const cell = document.createElement('div')
-
-                    cell.classList.add("lesson-cell")
-                    cell.style.backgroundColor = "var(--dgray)"
-                    cell.innerHTML = "No<br>Class"
-
-                    cellContainer.appendChild(cell)
+                    cellContainer.style.backgroundColor = "var(--dgray)"
+                    cellContainer.innerHTML = "No<br>Class"
                 }
             }
 
@@ -229,6 +242,19 @@ function createTable(type, container) {
         }
 
         tbody.appendChild(row)
+
+        if (dayIndex < days.length - 1) {
+            const sepRow = document.createElement('tr')
+            const sepCell = document.createElement('td')
+
+            sepCell.colSpan = maxLessons + 1
+            sepCell.style.height = '2px'
+            sepCell.style.padding = '0'
+            sepCell.style.backgroundColor = 'var(--dgray)'
+
+            sepRow.appendChild(sepCell)
+            tbody.appendChild(sepRow)
+        }
     })
 
     table.appendChild(tbody)

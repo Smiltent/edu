@@ -6,6 +6,7 @@ import axios from "axios"
 
 import RawScheduleData from "@/models/RawScheduleData.ts"
 import Week from "@/models/Week.ts"
+import { express } from ".."
 
 const createHeaders = (url: string) => ({
     "Referer": url,
@@ -164,8 +165,22 @@ export default class Scraper {
             const isModified = existing && checkDiff(existing.data, incoming) !== "no changes"
 
             if (!isNew && !isModified) return false
-            console.debug(`${isNew ? "New" : "Modified"} week ${week} — storing to database.`)
 
+            if (isNew) {
+                console.debug(`New week ${week} — storing to database.`)
+                express.sendWSMessage(JSON.stringify({
+                    week,
+                    type: "new",
+                }))
+
+            } else {
+                console.debug(`Updating week ${week} — storing to database.`)
+                express.sendWSMessage(JSON.stringify({
+                    week,
+                    type: "update",
+                }))
+            }
+            
             await RawScheduleData.updateOne(
                 { week },
                 { $set: { data: incoming } },

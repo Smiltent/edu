@@ -91,17 +91,13 @@ a, a:visited {
 
 /* =========== TABLE =========== */
 table {
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 6px 6px;
     width: 40rem;
 }
 
 table, th, td {
     color: var(--text);
-    border: 2px solid var(--dgray);
-}
-
-th, td {
-    padding: 6px;
 }
 
 tr:not(:first-child) th {
@@ -118,6 +114,10 @@ th:first-child,
 td:first-child {
     width: 1%;
     white-space: nowrap;
+}
+
+.lesson-group-entry {
+    padding: 0.35rem;
 }
 
 .group-badge {
@@ -145,7 +145,7 @@ form, select{
 }
 
 .lesson-cell {
-    padding: 0.25rem;
+    padding: 0.35rem;
     border-radius: 0.25rem;
 }
 
@@ -281,6 +281,8 @@ form, select{
     td {
         display: flex;
         flex-direction: row;
+
+        margin: 7px;
     }
 
     th:not(:first-child),
@@ -295,5 +297,6 @@ form, select{
 
     .lesson-cell {
         min-height: 38px;
+        margin: 2px;
     }
 }

@@ -25,11 +25,11 @@ button.addEventListener("click", async () => {
         backgroundColor: null
     })
 
-    const image = canvas.toDataURL("image/png")
-
     table.style.width = ogStyles.width
     table.style.transform = ogStyles.transform
     table.style.transformOrigin = ogStyles.transformOrigin
+
+    const image = canvas.toDataURL("image/png")
 
     const link = document.createElement("a")
     link.href = image

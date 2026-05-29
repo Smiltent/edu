@@ -5,3 +5,6 @@ services:
     container_name: "Edu"
     restart: unless-stopped
     env_file: .env
+
+networks:
+  
