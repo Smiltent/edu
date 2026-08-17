@@ -1,7 +1,8 @@
 
 import { type Application } from 'express'
-import path from 'path'
-import fs from 'fs'
+import { pathToFileURL } from 'node:url'
+import path from 'node:path'
+import fs from 'node:fs'
 
 async function registerRoutesInDir(app: Application, dir: string, baseMount: string = '') {
     const entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -17,7 +18,7 @@ async function registerRoutesInDir(app: Application, dir: string, baseMount: str
         const mount = name === "root" ? baseMount || "/" : `${baseMount}/${name}`
 
         try {
-            const mod = await import(fPath)
+            const mod = await import(pathToFileURL(fPath).href)
             const router = mod.default
 
             if (!router || typeof router !== "function") {
@@ -40,6 +41,6 @@ async function registerRoutesInDir(app: Application, dir: string, baseMount: str
 }
 
 export default async function registerRoutes(app: Application) {
-    const dir = path.join(__dirname, '..', '..', 'routes')
+    const dir = path.join(import.meta.dirname!, '..', '..', 'routes')
     await registerRoutesInDir(app, dir)
 }

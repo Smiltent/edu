@@ -1,5 +1,5 @@
 
-import migrations from "@/util/migrations"
+import migrations from "@/util/migrations.ts"
 import mongoose from "mongoose"
 
 export default class Database {

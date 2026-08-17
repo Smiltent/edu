@@ -1,6 +1,6 @@
 
 import RawScheduleData from "@/models/RawScheduleData.ts"
-import { times, timesWeekend } from "@/util/time"
+import { times, timesWeekend } from "@/util/time.ts"
 import Lesson from "@/models/Lesson.ts"
 import Week from "@/models/Week.ts"
 
@@ -57,7 +57,9 @@ export default class Schedule {
             this.addedParsedDaysData.push(this.week)
         }
 
-        const existingLessons = await Lesson.find({ week: weekObjectId }).lean()
+        const existingLessons = await Lesson.find({ week: weekObjectId })
+            .select('period day class group classroom name teachers lessonStart lessonEnd')
+            .lean()
         const existingMap = new Map(
             existingLessons.map(l => [
                 `${l.period}-${l.day}-${l.class}-${l.group}`,
@@ -71,12 +73,13 @@ export default class Schedule {
         for (const card of this.index.cards) {
             // get lesson information
             const lesson = this.index.lessons[card.lessonid]
+            if (!lesson) continue
 
             // index information
-            const teachers = lesson.teacherids?.map((id: string) => this.index.teachers[id])
-            const classes = lesson.classids.map((id: string) => this.index.classes[id])
-            const groups = lesson.groupids?.map((id: string) => this.index.groups[id])
-            
+            const teachers = (lesson.teacherids ?? []).map((id: string) => this.index.teachers[id]).filter(Boolean)
+            const classes = (lesson.classids ?? []).map((id: string) => this.index.classes[id]).filter(Boolean)
+            const groups = (lesson.groupids ?? []).map((id: string) => this.index.groups[id]).filter(Boolean)
+
             const classroom = this.index.classrooms[card.classroomids]
             const subject = this.index.subjects[lesson.subjectid]
 
@@ -97,12 +100,8 @@ export default class Schedule {
                         const times = this.getPeriodTimes(period, isLastDayOfWeek)
                         if (!times) continue
 
-                        const group = groups.find((g: any) => g.classid === clazz.id)       
-                        const groupName = group.entireclass ? "all" : group.name
-
-                        if (groupName === "Visa klase") {
-                            console.log("HIIIIIIII")
-                        }
+                        const group = groups.find((g: any) => g.classid === clazz.id)
+                        const groupName = (!group || group.entireclass) ? "all" : group.name
 
                         const query = {
                             week: weekObjectId,
@@ -135,7 +134,7 @@ export default class Schedule {
                                 date: new Date(), type: "name", from: existing.name, to: data.name
                             })
 
-                            if (JSON.stringify(existing.teachers.sort()) !== JSON.stringify(data.teachers.sort())) changes.push({
+                            if (JSON.stringify([...existing.teachers].sort()) !== JSON.stringify([...data.teachers].sort())) changes.push({
                                 date: new Date(), type: "teachers", from: existing.teachers, to: data.teachers
                             })
 
@@ -144,15 +143,13 @@ export default class Schedule {
                             })
                         }
 
+                        const update: any = { $set: data }
+                        if (changes.length) update.$push = { changes: { $each: changes } }
+
                         bulkOps.push({
                             updateOne: {
                                 filter: query,
-                                update: {
-                                    $set: data,
-                                    $push: {
-                                        changes: { $each: changes }
-                                    }
-                                },
+                                update,
                                 upsert: true
                             }
                         })
@@ -190,7 +187,7 @@ export default class Schedule {
      * @param week The week data to load from EduPage
      */
     private async loadIndex(week: string) {
-        const payload: any = await RawScheduleData.findOne({ week })
+        const payload: any = await RawScheduleData.findOne({ week }).lean()
         if (!payload) throw new Error(`No raw data found for week ${week}`)  
 
         this.data = payload.data

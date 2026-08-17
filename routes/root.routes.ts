@@ -1,17 +1,20 @@
 
-import { userAuth } from "../middlewares/auth.middleware"
-import { register, login } from "../services/auth.service"
+import { SESSION_COOKIE, SESSION_TTL, destroySession } from "../services/session.service.ts"
+import { register, login } from "../services/auth.service.ts"
+import { userAuth } from "../middlewares/auth.middleware.ts"
+import getClientIp from "../util/realip.ts"
 import rateLimit from "express-rate-limit"
 
 import { Router } from 'express'
-import path from "path"
+import process from "node:process"
+import path from "node:path"
 const router = Router()
 
 const COOKIE = {
     httpOnly: true,
     secure: process.env.ENV === 'prod',
-    sameSite: 'strict' as 'strict',
-    maxAge: 24 * 60 * 60 * 1000
+    sameSite: 'strict' as const,
+    maxAge: SESSION_TTL
 }
 
 const LOGIN_REGISTER_RATELIMIT = rateLimit({
@@ -21,7 +24,7 @@ const LOGIN_REGISTER_RATELIMIT = rateLimit({
         switch (req.path) {
             case '/login':
                 return res.status(429).render("login", { dMsg: "you are being ratelimited", dType: "bad" } )
-            
+
             case '/register':
                 return res.status(429).render("register", { dMsg: "you are being ratelimited", dType: "bad" } )
 
@@ -34,22 +37,24 @@ const LOGIN_REGISTER_RATELIMIT = rateLimit({
 // ===========================================================
 router.post('/register', LOGIN_REGISTER_RATELIMIT, async (req, res) => {
     if (process.env.REGISTER == "false") return res.status(400).render("register", { dMsg: "registering is disabled", dType: "bad" } )
-    if (req.cookies?.token) return res.redirect('/')
+    if (req.user) return res.redirect('/')
 
     try {
         const { username, password, favoriteNumber } = req.body
 
         // validate
+        if (typeof password !== 'string' || typeof username !== 'string') return res.status(400).render("register", { dMsg: "no.", dType: "bad" } )
+
         if (username.length < 3 || username.length > 20) return res.status(400).render("register", { dMsg: "username must be between 3 and 20 characters", dType: "bad" } )
         if (username.match(/[^a-zA-Z0-9_]/)) return res.status(400).render("register", { dMsg: "username may only contain letters, numbers and underscores", dType: "bad" } )
 
-        if (favoriteNumber && (isNaN(favoriteNumber))) return res.status(400).render("register", { dMsg: "favorite number must be a number between 0 and 100", dType: "bad" } )
+        const number = Number(favoriteNumber)
+        if (favoriteNumber === undefined || favoriteNumber === "" || isNaN(number) || number < 0 || number > 100) return res.status(400).render("register", { dMsg: "favorite number must be a number between 0 and 100", dType: "bad" } )
+
         if (password.length < 6 || password.length > 64) return res.status(400).render("register", { dMsg: "password must be between 6 and 64 characters", dType: "bad" } )
 
-        if (typeof password !== 'string' || typeof username !== 'string') return res.status(400).render("register", { dMsg: "no.", dType: "bad" } )
+        await register(username, password, number)
 
-        await register(username, password, favoriteNumber)
-    
         res.render("login", { dMsg: "you have registered. please log in!", dType: "good"} )
     } catch (err: any) {
         res.status(400).render("register", { dMsg: err.message, dType: "bad" } )
@@ -57,40 +62,41 @@ router.post('/register', LOGIN_REGISTER_RATELIMIT, async (req, res) => {
 })
 
 router.get('/register', (req, res) => {
-    if (req.cookies?.token) return res.redirect('/')
+    if (req.user) return res.redirect('/')
     res.render("register")
 })
 
 // ===========================================================
 router.post('/login', LOGIN_REGISTER_RATELIMIT, async (req, res) => {
-    if (req.cookies?.token) return res.redirect('/')
-
-    console.debug({
-        body_csrf:   req.body._csrf,
-        cookie_csrf: req.cookies?.['x-csrf-token'] ?? req.signedCookies?.['x-csrf-token'],
-    })
+    if (req.user) return res.redirect('/')
 
     try {
         const { username, password } = req.body
-        const token = await login(username, password)
-
         if (typeof password !== 'string' || typeof username !== 'string') return res.status(400).render("login", { dMsg: "no.", dType: "bad" } )
 
-        res.cookie('token', token, COOKIE)
+        const token = await login(username, password, {
+            userAgent: req.get("user-agent") ?? "unknown",
+            ip: String(getClientIp(req) ?? "unknown")
+        })
+
+        res.cookie(SESSION_COOKIE, token, COOKIE)
         res.redirect('/')
     } catch (err: any) {
         res.status(400).render("login", { dMsg: err.message, dType: "bad" } )
     }
 })
 
-router.get('/login', async (req, res) => {
-    if (req.cookies?.token) return res.redirect('/')
+router.get('/login', (req, res) => {
+    if (req.user) return res.redirect('/')
     res.render("login")
 })
 
 // ===========================================================
-router.get('/logout', userAuth, async (_, res) => {
-    res.clearCookie('token')
+router.get('/logout', userAuth, async (req, res) => {
+    const token = req.cookies?.[SESSION_COOKIE]
+    if (token) await destroySession(token)
+
+    res.clearCookie(SESSION_COOKIE)
     res.redirect('/')
 })
 
@@ -114,7 +120,7 @@ router.get('/', (_, res) => {
 })
 
 router.get('/favicon.ico', (_, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'favicon.ico'))
+    res.sendFile(path.join(import.meta.dirname!, '..', 'public', 'favicon.ico'))
 })
 
 router.get('/teapot', (_, res) => {

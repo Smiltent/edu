@@ -1,13 +1,13 @@
 
-import { pLimit } from "@/util/pLimit"
-import checkDiff from "@/util/diff"
-import Schedule from "./Schedule"
+import { pLimit } from "@/util/pLimit.ts"
+import { hasChanges } from "@/util/diff.ts"
+import Schedule from "./Schedule.ts"
 import axios from "axios"
-import cache from "@/util/cache"
+import cache from "@/util/cache.ts"
 
 import RawScheduleData from "@/models/RawScheduleData.ts"
 import Week from "@/models/Week.ts"
-import { express } from ".."
+import { express } from "@/index.ts"
 
 const createHeaders = (url: string) => ({
     "Referer": url,
@@ -54,6 +54,8 @@ export default class Scraper {
             this.currentYear = await this.fetchYear()
             this.weeks = await this.getWeeksData()
 
+            if (!this.weeks?.timetables?.length) return console.warn("No weeks were returned, skipping this run...")
+
             this.currentWeek = this.weeks.default_num
 
             await Week.bulkWrite(this.weeks.timetables.map((week: any) => ({
@@ -64,15 +66,22 @@ export default class Scraper {
                 }
             })))
 
+            const notifications: { week: string, type: string }[] = []
+
             await Promise.all(this.weeks.timetables.map((week: any) => limit(async () => {
-                const canParse = await this.storeWeekToDatabase(week.tt_num)
-                if (!canParse) return
+                const state = await this.storeWeekToDatabase(week.tt_num)
+                if (!state) return
 
                 const parser = new Schedule()
                 await parser.i(week.tt_num)
                 await parser.storeLessonData()
+
+                notifications.push({ week: week.tt_num, type: state })
             })))
+
+            // the cache has to go before the clients are told to refetch, otherwise they get the old data back
             cache.invalidate()
+            notifications.forEach(n => express?.sendWSMessage(JSON.stringify(n)))
         } catch (err) {
             console.error(`Failed to store all weeks to database: ${err}`)
         }
@@ -103,6 +112,8 @@ export default class Scraper {
                 await parser.i(week)
                 await parser.storeLessonData()
             })))
+
+            cache.invalidate()
         } catch (err) {
             console.error(`Failed to reparse weeks in database: ${err}`)
         }
@@ -124,7 +135,7 @@ export default class Scraper {
 
             // edge case - in case if it's empty or null
             if (!data.default_num) {
-                data.default_num = data.timetables.at(-1).tt_num
+                data.default_num = data.timetables?.at(-1)?.tt_num
 
                 if (!alreadyWarned) {
                     console.warn("Default_num is empty, falling back to most recent week...")
@@ -142,9 +153,9 @@ export default class Scraper {
     /**
      * Store the week into the database
      * @param week EduPage week
-     * @returns successfullness
+     * @returns "new" | "update" if it has to be reparsed, null if nothing changed
      */
-    private async storeWeekToDatabase(week: string) {
+    private async storeWeekToDatabase(week: string): Promise<string | null> {
         try {
             const { data: res } = await axios.post(
                 `${this.url}/timetable/server/regulartt.js?__func=regularttGetData`, 
@@ -154,45 +165,29 @@ export default class Scraper {
             
             // refreshed the weeks - yes, the message is in plural
             if (res.error === "Timetable does not exists") {
-                this.weeks = await this.getWeeksData()
                 console.debug(`Week ${week} has been removed`)
 
-                return false
+                return null
             }
 
             const incoming = res.r.dbiAccessorRes.tables
-            const existing = await RawScheduleData.findOne({ week })
+            const existing = await RawScheduleData.findOne({ week }).lean()
 
             const isNew = !existing
-            const isModified = existing && checkDiff(existing.data, incoming) !== "no changes"
+            if (!isNew && !hasChanges(existing.data, incoming)) return null
 
-            if (!isNew && !isModified) return false
+            console.debug(`${isNew ? "New" : "Updating"} week ${week} — storing to database.`)
 
-            if (isNew) {
-                console.debug(`New week ${week} — storing to database.`)
-                express.sendWSMessage(JSON.stringify({
-                    week,
-                    type: "new",
-                }))
-
-            } else {
-                console.debug(`Updating week ${week} — storing to database.`)
-                express.sendWSMessage(JSON.stringify({
-                    week,
-                    type: "update",
-                }))
-            }
-            
             await RawScheduleData.updateOne(
                 { week },
                 { $set: { data: incoming } },
                 { upsert: true }
             )
 
-            return true
+            return isNew ? "new" : "update"
         } catch (err) {
             console.error(`Failed to fetch week ${week} from ${this.url}: ${err}`)
-            return false
+            return null
         }
     }
 

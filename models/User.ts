@@ -1,6 +1,6 @@
 
 import mongoose, { Schema } from 'mongoose'
-import Role from './Role'
+import Role from './Role.ts'
 
 const UserSchema = new Schema({
     username: { type: String, required: true, unique: true },

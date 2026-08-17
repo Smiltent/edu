@@ -1,0 +1,63 @@
+{
+  "tasks": {
+    "dev": "deno run --watch --env-file=.env --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-run=git index.ts --debug",
+    "start": "deno run --env-file=.env --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-run=git index.ts",
+    "check": "deno check index.ts"
+  },
+
+  "imports": {
+    "@/": "./",
+
+    "axios": "npm:axios@^1.16.1",
+    "bcryptjs": "npm:bcryptjs@^3.0.2",
+    "body-parser": "npm:body-parser@^2.2.2",
+    "chalk": "npm:chalk@^5.6.2",
+    "cookie-parser": "npm:cookie-parser@^1.4.7",
+    "cors": "npm:cors@^2.8.6",
+    "ejs": "npm:ejs@^3.1.10",
+    "express": "npm:express@^5.2.1",
+    "express-ejs-layouts": "npm:express-ejs-layouts@^2.5.1",
+    "express-rate-limit": "npm:express-rate-limit@^8.5.2",
+    "mongoose": "npm:mongoose@^8.24.0",
+    "ws": "npm:ws@^8.18.3",
+
+    "@types/cookie-parser": "npm:@types/cookie-parser@^1.4.10",
+    "@types/cors": "npm:@types/cors@^2.8.19",
+    "@types/express": "npm:@types/express@^5.0.6",
+    "@types/express-ejs-layouts": "npm:@types/express-ejs-layouts@^2.5.4",
+    "@types/ws": "npm:@types/ws@^8.18.1"
+  },
+
+  "nodeModulesDir": "auto",
+
+  "compilerOptions": {
+    "lib": ["deno.ns", "esnext", "dom"],
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true
+  },
+
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-explicit-any",
+        "no-var",
+        "no-inner-declarations",
+        "require-await"
+      ]
+    }
+  },
+
+  "fmt": {
+    "useTabs": false,
+    "indentWidth": 4,
+    "semiColons": false,
+    "singleQuote": false
+  },
+
+  "exclude": [
+    "node_modules",
+    "public"
+  ]
+}

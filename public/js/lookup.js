@@ -1,4 +1,6 @@
 
+import { setup as makeSearchable } from "/public/js/search.js"
+
 export const settings = {
     url: `${window.location.origin}/v2/schedule`,
     weekData: null,
@@ -50,25 +52,39 @@ async function getSchoolData(type, ignore, searchable) {
         fetch(`${settings.url}/${type}/list`).then(r => r.json())
     ])
 
+    const weeks = weeksData.data ?? []
+    const mains = (mainData.data ?? []).filter(i => i && i !== "Koordinators")
+
     if (!ignore[0]) settings.values.week = weeksData.currentWeek
 
-    weeksData.data.forEach(w => {
+    weeks.forEach(w => {
         settings.weekDayNames[w.id] = w.days ?? ["0", "1", "2", "3", "4"]
     })
 
-    setWeekOptions(settings.elements.week, weeksData.data, weeksData.currentWeek)
+    setWeekOptions(settings.elements.week, weeks, weeksData.currentWeek)
 
-    if (!ignore[1]) settings.values.main = mainData.data[0]
+    // a remembered value that no longer exists would leave the page empty
+    if (!ignore[1] || !mains.includes(settings.values.main)) settings.values.main = mains[0] ?? null
 
-    setMainOptions(settings.elements.main, mainData.data, ignore[1] ? settings.values.main : null, searchable)
+    setMainOptions(settings.elements.main, mains, settings.values.main, searchable)
 }
 
 async function getWeekData(type, week, getter) {
     const dayNames = settings.weekDayNames[week] ?? ["0", "1", "2", "3", "4"]
 
+    if (getter == null) {
+        settings.weekData = { data: {} }
+        return
+    }
+
     await fetch(`${settings.url}/${type}/${encodeURIComponent(getter)}/week/${week}`)
         .then(res => res.json())
         .then((data) => {
+            if (!data.success || !Array.isArray(data.lessons)) {
+                settings.weekData = { data: {} }
+                return
+            }
+
             const byDay = {}
 
             data.lessons.forEach(lesson => {
@@ -84,6 +100,7 @@ async function getWeekData(type, week, getter) {
             const transformed = {}
 
             const globalMaxPeriod = Math.max(
+                0,
                 ...Object.values(byDay).flatMap(day => Object.keys(day).map(Number))
             )
 
@@ -129,13 +146,22 @@ function createTable(type, container) {
     // reset table
     container.innerHTML = ''
 
+    const days = Object.values(settings.weekData?.data ?? {})
+    if (!days.length) {
+        const empty = document.createElement('p')
+        empty.innerText = 'no schedule saved for that week'
+
+        container.appendChild(empty)
+        return
+    }
+
     // create table element
     const table = document.createElement('table')
     table.style.width = '100%'
 
     // determine max lessons in a day for header
     const maxLessons = Math.max(
-        ...Object.values(settings.weekData.data).map(d => d.data.length)
+        ...days.map(d => d.data.length)
     )
 
     // header logic
@@ -158,7 +184,6 @@ function createTable(type, container) {
     const tbody = document.createElement('tbody')
 
     // insert lessons and days
-    const days = Object.values(settings.weekData.data)
     days.forEach((day, dayIndex) => {
         const row = document.createElement('tr')
 
@@ -255,6 +280,8 @@ function createTable(type, container) {
 }
 
 function setWeekOptions(element, data, primary = null) {
+    element.innerHTML = ''
+
     data.forEach((week) => {
         const option = document.createElement('option')
 
@@ -271,9 +298,10 @@ function setWeekOptions(element, data, primary = null) {
 }
 
 function setMainOptions(element, data, primary = null, searchable) {
+    element.innerHTML = ''
+
     data.forEach((info) => {
         const option = document.createElement('option')
-        if (info === "Koordinators") return 
 
         if (info === primary) {
             option.selected = true
@@ -285,12 +313,8 @@ function setMainOptions(element, data, primary = null, searchable) {
         element.appendChild(option)
     })
 
+    // turns a select element, into a searchable one (for search.js)
     searchable && makeSearchable(element)
-}
-
-// turns a select element, into a searchable one (for search.js)
-function makeSearchable(element) {
-    element.style.display = "none"
 }
 
 //
@@ -306,8 +330,10 @@ function hashCode(str) {
 }
 
 function randomColorFromString(str) {
-    const hue = Math.abs(hashCode(str)) % 360
-    const sat = 50 + (Math.abs(hashCode(str)) % 30) 
+    const hash = Math.abs(hashCode(str))
+
+    const hue = hash % 360
+    const sat = 50 + (hash % 30)
 
     return `hsl(${hue}, ${sat}%, 25%)`
 }
@@ -315,11 +341,11 @@ function randomColorFromString(str) {
 //
 //   main
 //
-export async function setup(type, ignore = [false, false], searchable = false) {
+export async function setup(type, ignore = [false, false], searchable = true) {
     const table = document.getElementById('tableContainer')
 
     // get information from API
-    await getSchoolData(type, ignore)
+    await getSchoolData(type, ignore, searchable)
     await getWeekData(type, settings.values.week, settings.values.main)
 
     createTable(type, table)
@@ -328,7 +354,7 @@ export async function setup(type, ignore = [false, false], searchable = false) {
     settings.elements.week.addEventListener('change', async (e) => {
         settings.values.week = e.target.value
 
-        await getWeekData(type, settings.values.week, settings.values.main, searchable)
+        await getWeekData(type, settings.values.week, settings.values.main)
         createTable(type, table)
     })
 
@@ -338,7 +364,7 @@ export async function setup(type, ignore = [false, false], searchable = false) {
         // Store last lookup in localStorage
         localStorage.setItem("lastLookup" + (type.charAt(0).toUpperCase() + type.slice(1)), settings.values.main)
 
-        await getWeekData(type, settings.values.week, settings.values.main, searchable)
+        await getWeekData(type, settings.values.week, settings.values.main)
         createTable(type, table)
     })
 }

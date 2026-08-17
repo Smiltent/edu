@@ -1,6 +1,7 @@
 
+import process from "node:process"
 import chalk from "chalk"
-import path from "path"
+import path from "node:path"
 
 const YELLOW = chalk.bgHex("#ebc415")
 const ORANGE = chalk.bgHex("#f05e0a")
@@ -52,8 +53,12 @@ export default function log(debug: boolean) {
     const base = (level: string, ...args: any[]) => {
         const caller = getCaller()
 
+        const body = args.map(a =>
+            typeof a === "string" ? a : Deno.inspect(a, { colors: true, depth: 4 })
+        ).join(" ")
+
         process.stdout.write(
-            `${level}${GRAY(` [${caller}] ${getTime()} `)} ${args}\n`
+            `${level}${GRAY(` [${caller}] ${getTime()} `)} ${body}\n`
         )
     }
 

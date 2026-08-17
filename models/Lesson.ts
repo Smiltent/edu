@@ -14,7 +14,15 @@ const LessonSchema = new Schema({
     
     class: [{ type: String, required: true }],
     group: [{ type: String, required: true }],
-    teachers: [{ type: String, required: true }]
+    teachers: [{ type: String, required: true }],
+
+    changes: [{
+        _id: false,
+        date: { type: Date, required: true, default: Date.now },
+        type: { type: String, required: true },
+        from: { type: Schema.Types.Mixed },
+        to: { type: Schema.Types.Mixed }
+    }]
 })
 
 LessonSchema.index({ week: 1, period: 1, day: 1, class: 1, group: 1 })

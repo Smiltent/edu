@@ -1,11 +1,11 @@
 
-import { userAuth, requirePermission } from "@/middlewares/auth.middleware"
-import { scraper, express } from "@/index"
+import { userAuth, requirePermission } from "@/middlewares/auth.middleware.ts"
+import { scraper, express } from "@/index.ts"
 
 import { Router } from 'express'
 const router = Router()
 
-router.post(`/refreshDatabase`, userAuth, requirePermission('admin'), (req, res) => {
+router.post(`/refreshDatabase`, userAuth, requirePermission('admin'), (_req, res) => {
     console.warn("Manual database refresh from panel")
 
     scraper.reparseAllWeeksInDatabase()
@@ -13,7 +13,7 @@ router.post(`/refreshDatabase`, userAuth, requirePermission('admin'), (req, res)
     res.redirect('/admin')
 })
 
-router.post(`/refreshWeeks`, userAuth, requirePermission('admin'), (req, res) => {
+router.post(`/refreshWeeks`, userAuth, requirePermission('admin'), (_req, res) => {
     console.warn("Manual week refresh from panel")
 
     scraper.storeAllWeeksToDatabase()
@@ -21,7 +21,7 @@ router.post(`/refreshWeeks`, userAuth, requirePermission('admin'), (req, res) =>
     res.redirect('/admin')
 })
 
-router.post(`/sendTestNotification`, userAuth, requirePermission('admin'), (req, res) => {
+router.post(`/sendTestNotification`, userAuth, requirePermission('admin'), (_req, res) => {
     console.warn("Manual test notification sent from panel")
 
     express.sendWSMessage(JSON.stringify({

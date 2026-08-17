@@ -1,15 +1,16 @@
 
-import registerRoutes from './express/registerRoutes'
-import { root } from '@/middlewares/root.middleware'
+import registerRoutes from './express/registerRoutes.ts'
+import { root } from '@/middlewares/root.middleware.ts'
 import expressLayouts from 'express-ejs-layouts'
 import cookieParser from 'cookie-parser'
-import getGitInfo from '@/util/githash'
-import { WebSocketServer } from 'ws'
+import getGitInfo from '@/util/githash.ts'
+import { WebSocketServer, WebSocket } from 'ws'
 import bodyParser from 'body-parser'
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
-import http from 'http'
+import path from 'node:path'
+import http from 'node:http'
+import process from 'node:process'
 
 export default class WebServer {
     private app: express.Express
@@ -24,8 +25,8 @@ export default class WebServer {
         this.port = port
         this.app = express()
         this.server = http.createServer(this.app)
-        this.wss = new WebSocketServer({ server: this.server })
-        
+        this.wss = new WebSocketServer({ noServer: true })
+
         this.i()
     }
 
@@ -43,7 +44,7 @@ export default class WebServer {
         this.app.use(
             '/public',
             express.static(
-                path.join(__dirname, '..', 'public'), {
+                path.join(import.meta.dirname!, '..', 'public'), {
                     etag: !isDev,
                     lastModified: !isDev,
                     maxAge: isDev ? 0 : '10s',
@@ -85,29 +86,43 @@ export default class WebServer {
     private async routes() {
         await registerRoutes(this.app)
 
-        this.app.use((req, res) => {
+        this.app.use((_req, res) => {
             res.status(404).render("error")
         })
     }
     
     // ================= WEBSOCKETS =================
     private ws() {
-        this.wss.on('connection', (ws, req) => {
+        this.wss.on('connection', (ws) => {
             console.debug('New Client connected')
 
+            ws.on('error', (err) => console.error(`WebSocket client error: ${err}`))
             ws.on('close', () => console.debug('Client disconnected'))
         })
 
         this.server.on('upgrade', (req, soc, head) => {
-            const { url } = req
+            const url = (req.url ?? '').split('?')[0]
 
-            if (url !== '/v1/ws') return soc.destroy()
+            if (url !== '/v1/ws') {
+                soc.write('HTTP/1.1 404 Not Found\r\n\r\n')
+                return soc.destroy()
+            }
+
+            this.wss.handleUpgrade(req, soc, head, (ws) => this.wss.emit('connection', ws, req))
         })
     }
 
-    public sendWSMessage(msg: string) { 
+    public sendWSMessage(msg: string) {
         console.debug(`Sent WS message: ${msg}`)
-        this.wss.clients.forEach(c => c.send(msg)) 
+        this.wss.clients.forEach(c => {
+            if (c.readyState !== WebSocket.OPEN) return
+
+            try {
+                c.send(msg)
+            } catch (err) {
+                console.error(`Failed sending WS message to a client: ${err}`)
+            }
+        })
     }
 
     private start() {

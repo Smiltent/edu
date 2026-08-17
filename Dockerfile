@@ -1,14 +1,13 @@
-FROM oven/bun:latest
+FROM denoland/deno:latest
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-COPY package.json bun.lockb* ./
-COPY .env ./
+COPY deno.json deno.lock* ./
 
-RUN bun install --frozen-lockfile
+RUN deno install
 
 COPY . .
-EXPOSE 8080
+EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+CMD ["deno", "task", "start"]

@@ -1,13 +1,14 @@
 
-import { execSync } from 'child_process'
+import { execFileSync } from 'node:child_process'
 
 export default async function getGitInfo() {
     try {
-        const hash = execSync(`git rev-parse HEAD`).toString().trim()
+        // spawned without a shell, so the runtime only has to be allowed to run git itself
+        const hash = execFileSync("git", ["rev-parse", "HEAD"]).toString().trim()
 
         return {
             hash: hash.substring(0, 14),
-            url: `https://github.com/Smiltent/edu/commit/${hash}`
+            url: `https://git.smilt.dev/smil/edu/commit/${hash}`
         }
     } catch (err) {
         console.error(`Error fetching git hash from .git folder (git might not be installed): ${err}`)

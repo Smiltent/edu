@@ -1,31 +1,18 @@
 
-import Lesson from '@/models/Lesson'
-import Week from '@/models/Week'
-import cache from '@/util/cache'
+import { getWeekDoc, getCurrentWeekDoc, TTL } from '@/util/weeks.ts'
+import Lesson from '@/models/Lesson.ts'
+import cache from '@/util/cache.ts'
 
-import { scraper } from '@/index'
 import { Router } from 'express'
 const router = Router()
-
-const TTL = 5 * 60 * 1000
-
-async function getWeekDoc(week: string) {
-    const cacheKey = `week-doc-${week}`
-    const hit = cache.get(cacheKey)
-    if (hit) return hit
-
-    const doc = await Week.findOne({ id: week })
-    if (doc) cache.set(cacheKey, doc, TTL)
-    return doc
-}
 
 router.get('/list', async (_, res) => {
     try {
         const hit = cache.get('class-list')
         if (hit) return res.json(hit)
 
-        const weekDoc = await getWeekDoc(scraper.currentWeek)
-        const data = await Lesson.distinct('class', { week: weekDoc?._id })
+        const weekDoc = await getCurrentWeekDoc()
+        const data = weekDoc ? await Lesson.distinct('class', { week: weekDoc._id }) : []
 
         const body = { success: true, data }
         cache.set('class-list', body, TTL)
@@ -50,7 +37,7 @@ router.get('/:id/week/:week', async (req, res) => {
         if (!weekDoc) return res.status(404).json({ success: false, data: 'Week not found' })
 
         const lessons = await Lesson.find({ week: weekDoc._id, class: id })
-            .select('-_id -__v -week')
+            .select('-_id -__v -week -changes')
             .sort({ day: 1, period: 1 })
 
         if (!lessons.length) return res.status(404).json({ success: false, data: 'No data found for that week (not saved)' })

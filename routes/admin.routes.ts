@@ -1,5 +1,5 @@
 
-import { userAuth, requirePermission } from "@/middlewares/auth.middleware"
+import { userAuth, requirePermission } from "@/middlewares/auth.middleware.ts"
 
 import { Router } from 'express'
 const router = Router()

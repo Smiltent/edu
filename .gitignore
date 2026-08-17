@@ -1,4 +1,4 @@
-# dependencies (bun install)
+# dependencies (deno install)
 node_modules
 
 # output
@@ -34,7 +34,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-bun.lock
+# deno (lockfile is committed, the cache is not)
+.deno
 tmp/
 
 # ignore this pls thank you

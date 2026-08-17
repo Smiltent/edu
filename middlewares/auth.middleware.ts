@@ -1,36 +1,27 @@
 
 import type { Request, Response, NextFunction } from "express"
-import User from "@/models/User"
-import jwt from "jsonwebtoken"
-import Role from "@/models/Role"
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: any
+        }
+    }
+}
 
 interface AuthRequest extends Request {
     user?: any
 }
 
-async function userAuth(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-        const token = req.cookies?.token
-        if (!token) return res.status(403).render("error")
+/**
+ * The session is already resolved by root.middleware, this only gates the route
+ */
+function userAuth(req: AuthRequest, res: Response, next: NextFunction) {
+    if (!req.user) return res.status(401).render("error")
 
-        const payload: any = jwt.verify(token, String(process.env.JWT_SECRET))
-        const user = await User.findById(payload.id).populate("roles").lean()
-        if (!user) return res.status(403).render("error")
-
-        const roleNames = user.roles.map((role: any) => role.name)
-        const rolesData = await Role.find({ name: { $in: roleNames } })
-
-        req.user = {
-            ...user,
-            permissions: rolesData.flatMap(r => r.permissions)
-        }
-
-        return next()
-    } catch (err) {
-        console.error(`JWT Authentication error: ${err}`)
-        return res.status(401).render("error")
-    }
+    return next()
 }
+
 /**
  * Check if a user has valid permissions, continue if they match
  * @param permissions permissions, might require multiple?
