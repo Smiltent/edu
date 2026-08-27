@@ -1,0 +1,24 @@
+
+<%- include('./partials/$header.ejs') %>
+
+<div class="main flex-col">
+    <h1>schedule times</h1>
+    <% const groups = [{ label: "mon - thur", days: "1,2,3,4", rows: times }, { label: "fri", days: "5", rows: timesWeekend }] %>
+
+    <div class="timesGrid">
+        <% groups.forEach((group) => { %>
+            <div class="timesGroup flex-col">
+                <p><%= group.label %></p>
+
+                <% group.rows.forEach((row, i) => { %>
+                    <div class="timeRow" data-days="<%= group.days %>" data-start="<%= row[0] %>" data-end="<%= row[1] %>">
+                        <span class="timeIndex"><%= i + 1 %>.</span>
+                        <span><%= row[0] %> - <%= row[1] %></span>
+                    </div>
+                <% }) %>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<script src="/public/js/times.js" defer></script>

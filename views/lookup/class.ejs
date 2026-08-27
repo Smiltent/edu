@@ -3,22 +3,18 @@
 
 <div class="main flex-col">
     <h1>lookup class</h1>
-    <div class="flex-row">
-        <div class="flex-col">
-            <div>
-                <label>
-                    week → <select id="selectWeek"></select>
-                </label>
-            </div>
-            <div>
-                <label for="selectClass">class → </label>
-                <select id="selectClass"></select>
-            </div>
+    <div class="controls">
+        <div class="field">
+            <label for="selectWeek">week</label>
+            <select id="selectWeek"></select>
         </div>
-        
-        <div class="downloadContainer">
-            <button id="downloadBtn">download</button>
+
+        <div class="field">
+            <label for="selectClass">class</label>
+            <select id="selectClass"></select>
         </div>
+
+        <button id="downloadBtn">download</button>
     </div>
 
     <div id="tableContainer"></div>

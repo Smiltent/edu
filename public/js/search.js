@@ -1,13 +1,13 @@
 
-/**
- * This function extends onto the lookup.js system...
- * It uses the existing element, to make it searchable
- */
+function fold(text) {
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+}
+
 export function setup(element, placeholder = "search...") {
     if (!element) return
     if (element.dataset.searchable === "true") return
 
-    element.dataset.searchable = "true" // prevent double init
+    element.dataset.searchable = "true"
     element.style.display = "none"
 
     const wrapper = document.createElement("div")
@@ -74,10 +74,10 @@ export function setup(element, placeholder = "search...") {
     }
 
     function filter(text) {
-        const query = text.trim().toLowerCase()
+        const query = fold(text.trim())
 
         Array.from(optionsDiv.children).forEach(div => {
-            div.hidden = query !== "" && !div.textContent.toLowerCase().includes(query)
+            div.hidden = query !== "" && !div.dataset.search.includes(query)
         })
 
         setActive(0)
@@ -92,6 +92,7 @@ export function setup(element, placeholder = "search...") {
             const div = document.createElement("div")
             div.textContent = option.textContent
             div.dataset.value = option.value
+            div.dataset.search = fold(option.textContent)
 
             div.addEventListener("mousedown", (e) => {
                 e.preventDefault()

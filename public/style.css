@@ -149,6 +149,39 @@ form, select{
     border-radius: 0.25rem;
 }
 
+.lesson-cell.now {
+    outline: 2px solid var(--green);
+    outline-offset: -1px;
+}
+
+/* pwa.js puts .offline on the body whenever the connection drops */
+.offlineOnly {
+    display: none;
+}
+
+body.offline .offlineOnly {
+    display: block;
+}
+
+.controls {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.controls .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.controls .field select,
+.controls .field .customSelect {
+    margin-right: 0;
+}
+
 /* =========== DOWNLOAD BUTTON =========== */
 .downloadContainer {
     margin-top: auto;
@@ -162,6 +195,44 @@ form, select{
     border-radius: 0.25rem;
     padding: 0.5rem 1rem;
     cursor: pointer;
+}
+
+/* =========== TIMES =========== */
+.timesGrid {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.timesGroup > p {
+    color: var(--subtext2);
+    padding-bottom: 0.25rem;
+}
+
+.timeRow {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    width: fit-content;
+
+    color: var(--subtext1);
+    background-color: var(--dgray);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.timeIndex {
+    color: var(--subtext3);
+}
+
+.timeRow.now {
+    color: var(--green);
+    outline: 2px solid var(--green);
+    outline-offset: -1px;
+}
+
+.timeRow.now .timeIndex {
+    color: var(--green);
 }
 
 /* =========== SEARCH ============ */
@@ -210,7 +281,7 @@ form, select{
 
 /* Option item */
 .customOptions div {
-    padding: 0.25rem;
+    padding: 0.5rem;
     color: var(--subtext1);
     cursor: pointer;
 }
@@ -242,17 +313,33 @@ form, select{
     form {
         width: 100%;
     }
-
-    .customSelect {
-        width: 100%;
-    }
-
+    
     table {
         width: 100%;
     }
 }
 
 @media (max-width: 700px) {
+    .timesGrid {
+        gap: 1rem;
+    }
+
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+    }
+
+    .controls .field,
+    .controls .field select,
+    .controls .field .customSelect {
+        width: 100%;
+    }
+
+    .controls #downloadBtn {
+        margin-top: 1rem;
+    }
+
     #tableContainer table {
         border-collapse: collapse;
         border-color: transparent;

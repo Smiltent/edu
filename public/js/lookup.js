@@ -9,6 +9,7 @@ export const settings = {
         main: null
     },
     weekDayNames: {},
+    weekDates: {},
     elements: {
         week: null,
         main: null
@@ -46,19 +47,30 @@ export const settings = {
 //
 //   utils
 //
+
+async function getJSON(url) {
+    try {
+        return await fetch(url).then(r => r.json())
+    } catch (err) {
+        console.warn(`Failed to fetch ${url}: ${err}`)
+        return { success: false }
+    }
+}
+
 async function getSchoolData(type, ignore, searchable) {
     const [weeksData, mainData] = await Promise.all([
-        fetch(`${settings.url}/weeks/list`).then(r => r.json()),
-        fetch(`${settings.url}/${type}/list`).then(r => r.json())
+        getJSON(`${settings.url}/weeks/list`),
+        getJSON(`${settings.url}/${type}/list`)
     ])
 
     const weeks = weeksData.data ?? []
     const mains = (mainData.data ?? []).filter(i => i && i !== "Koordinators")
 
-    if (!ignore[0]) settings.values.week = weeksData.currentWeek
+    if (!ignore[0] && weeksData.currentWeek) settings.values.week = weeksData.currentWeek
 
     weeks.forEach(w => {
         settings.weekDayNames[w.id] = w.days ?? ["0", "1", "2", "3", "4"]
+        settings.weekDates[w.id] = w.dateFrom
     })
 
     setWeekOptions(settings.elements.week, weeks, weeksData.currentWeek)
@@ -133,6 +145,7 @@ async function getWeekData(type, week, getter) {
                     }
                 }
                 transformed[d] = {
+                    index: Number(d),
                     day: dayNames[Number(d)] ?? d,
                     data: arr
                 }
@@ -140,6 +153,21 @@ async function getWeekData(type, week, getter) {
 
             settings.weekData = { data: transformed }
         })
+        .catch(() => { settings.weekData = { data: {} } })
+}
+
+async function cacheOtherWeeks(type, main) {
+    if (main == null || !navigator.onLine || !navigator.serviceWorker?.controller) return
+
+    for (const week of Object.keys(settings.weekDayNames)) {
+        if (String(week) === String(settings.values.week)) continue
+
+        try {
+            await fetch(`${settings.url}/${type}/${encodeURIComponent(main)}/week/${week}`)
+        } catch {
+            return
+        }
+    }
 }
 
 function createTable(type, container) {
@@ -149,7 +177,9 @@ function createTable(type, container) {
     const days = Object.values(settings.weekData?.data ?? {})
     if (!days.length) {
         const empty = document.createElement('p')
-        empty.innerText = 'no schedule saved for that week'
+        empty.innerText = navigator.onLine
+            ? 'no schedule saved for that week'
+            : 'you are offline'
 
         container.appendChild(empty)
         return
@@ -202,6 +232,12 @@ function createTable(type, container) {
             if (lessons != null) {
                 const isGrouped = lessons.length > 1
 
+                if (lessons[0].start && lessons[0].end) {
+                    cellContainer.dataset.day = day.index
+                    cellContainer.dataset.start = lessons[0].start
+                    cellContainer.dataset.end = lessons[0].end
+                }
+
                 if (isGrouped) {
                     cellContainer.style.overflow = 'hidden'
                     cellContainer.style.padding = '0'
@@ -245,7 +281,6 @@ function createTable(type, container) {
 
                 if (hasLessonAfter) {
                     cellContainer.style.backgroundColor = "var(--dgray)"
-                    cellContainer.innerHTML = "No<br>Class"
                 }
             }
 
@@ -277,20 +312,20 @@ function createTable(type, container) {
 
     table.appendChild(tbody)
     container.appendChild(table)
+
+    markNow()
 }
 
 function setWeekOptions(element, data, primary = null) {
     element.innerHTML = ''
 
-    data.forEach((week) => {
+    data.forEach((week, index) => {
         const option = document.createElement('option')
 
-        if (week.id === primary) {
-            option.selected = true
-            option.innerHTML = `${week.dateFrom} [${week.id}] (current)`
-        } else {
-            option.innerHTML = `${week.dateFrom} [${week.id}]`
-        }
+        const label = `[${index + 1}] ${week.dateFrom}`
+
+        option.selected = week.id === primary
+        option.textContent = option.selected ? `${label} (current)` : label
 
         option.value = week.id
         element.appendChild(option)
@@ -315,6 +350,57 @@ function setMainOptions(element, data, primary = null, searchable) {
 
     // turns a select element, into a searchable one (for search.js)
     searchable && makeSearchable(element)
+}
+
+//
+//   now
+//
+const riga = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Riga",
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+})
+
+const RIGA_DAYS = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
+
+// the school runs on latvian time, whatever the phone is set to
+function rigaNow() {
+    const parts = {}
+    riga.formatToParts(new Date()).forEach(p => parts[p.type] = p.value)
+
+    const index = RIGA_DAYS[parts.weekday]
+    const today = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
+
+    return {
+        index,
+        monday: new Date(today - index * 86400000).toISOString().slice(0, 10),
+        minutes: Number(parts.hour) * 60 + Number(parts.minute)
+    }
+}
+
+function toMinutes(time) {
+    const [hour, minute] = time.split(":").map(Number)
+    return hour * 60 + minute
+}
+
+// only the week that actually contains today can hold a running lesson
+export function markNow() {
+    const now = rigaNow()
+    const thisWeek = settings.weekDates[settings.values.week] === now.monday
+
+    document.querySelectorAll('.lesson-cell[data-start]').forEach(cell => {
+        const active = thisWeek
+            && Number(cell.dataset.day) === now.index
+            && now.minutes >= toMinutes(cell.dataset.start)
+            && now.minutes < toMinutes(cell.dataset.end)
+
+        cell.classList.toggle('now', active)
+    })
 }
 
 //
@@ -349,6 +435,14 @@ export async function setup(type, ignore = [false, false], searchable = true) {
     await getWeekData(type, settings.values.week, settings.values.main)
 
     createTable(type, table)
+    cacheOtherWeeks(type, settings.values.main)
+
+    setInterval(markNow, 30000)
+
+    // phones freeze timers in the background, so the glow is stale on the way back
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) markNow()
+    })
 
     // setup event listeners
     settings.elements.week.addEventListener('change', async (e) => {
@@ -366,5 +460,7 @@ export async function setup(type, ignore = [false, false], searchable = true) {
 
         await getWeekData(type, settings.values.week, settings.values.main)
         createTable(type, table)
+
+        cacheOtherWeeks(type, settings.values.main)
     })
 }
