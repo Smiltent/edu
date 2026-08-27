@@ -348,7 +348,6 @@ function setMainOptions(element, data, primary = null, searchable) {
         element.appendChild(option)
     })
 
-    // turns a select element, into a searchable one (for search.js)
     searchable && makeSearchable(element)
 }
 
@@ -368,7 +367,6 @@ const riga = new Intl.DateTimeFormat("en-GB", {
 
 const RIGA_DAYS = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
 
-// the school runs on latvian time, whatever the phone is set to
 function rigaNow() {
     const parts = {}
     riga.formatToParts(new Date()).forEach(p => parts[p.type] = p.value)
@@ -388,7 +386,6 @@ function toMinutes(time) {
     return hour * 60 + minute
 }
 
-// only the week that actually contains today can hold a running lesson
 export function markNow() {
     const now = rigaNow()
     const thisWeek = settings.weekDates[settings.values.week] === now.monday
@@ -439,12 +436,10 @@ export async function setup(type, ignore = [false, false], searchable = true) {
 
     setInterval(markNow, 30000)
 
-    // phones freeze timers in the background, so the glow is stale on the way back
     document.addEventListener("visibilitychange", () => {
         if (!document.hidden) markNow()
     })
 
-    // setup event listeners
     settings.elements.week.addEventListener('change', async (e) => {
         settings.values.week = e.target.value
 
@@ -455,7 +450,6 @@ export async function setup(type, ignore = [false, false], searchable = true) {
     settings.elements.main.addEventListener('change', async (e) => {
         settings.values.main = e.target.value
 
-        // Store last lookup in localStorage
         localStorage.setItem("lastLookup" + (type.charAt(0).toUpperCase() + type.slice(1)), settings.values.main)
 
         await getWeekData(type, settings.values.week, settings.values.main)
