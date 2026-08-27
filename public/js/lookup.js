@@ -156,20 +156,6 @@ async function getWeekData(type, week, getter) {
         .catch(() => { settings.weekData = { data: {} } })
 }
 
-async function cacheOtherWeeks(type, main) {
-    if (main == null || !navigator.onLine || !navigator.serviceWorker?.controller) return
-
-    for (const week of Object.keys(settings.weekDayNames)) {
-        if (String(week) === String(settings.values.week)) continue
-
-        try {
-            await fetch(`${settings.url}/${type}/${encodeURIComponent(main)}/week/${week}`)
-        } catch {
-            return
-        }
-    }
-}
-
 function createTable(type, container) {
     // reset table
     container.innerHTML = ''
@@ -432,7 +418,6 @@ export async function setup(type, ignore = [false, false], searchable = true) {
     await getWeekData(type, settings.values.week, settings.values.main)
 
     createTable(type, table)
-    cacheOtherWeeks(type, settings.values.main)
 
     setInterval(markNow, 30000)
 
@@ -454,7 +439,5 @@ export async function setup(type, ignore = [false, false], searchable = true) {
 
         await getWeekData(type, settings.values.week, settings.values.main)
         createTable(type, table)
-
-        cacheOtherWeeks(type, settings.values.main)
     })
 }

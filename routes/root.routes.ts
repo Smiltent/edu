@@ -13,7 +13,6 @@ import fs from "node:fs"
 const router = Router()
 
 const PUBLIC = path.join(import.meta.dirname!, '..', 'public')
-const SW = path.join(PUBLIC, 'sw.js')
 
 const COOKIE = {
     httpOnly: true,
@@ -133,36 +132,6 @@ router.get('/favicon.ico', (_, res) => {
 
 router.get('/site.webmanifest', (_, res) => {
     res.type('application/manifest+json').sendFile(path.join(PUBLIC, 'site.webmanifest'))
-})
-
-// the git hash only moves on a commit, which would serve stale assets for a whole work session
-function assetsVersion(): string {
-    let latest = 0
-
-    const walk = (dir: string) => {
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            const full = path.join(dir, entry.name)
-
-            if (entry.isDirectory()) walk(full)
-            else latest = Math.max(latest, fs.statSync(full).mtimeMs)
-        }
-    }
-
-    walk(PUBLIC)
-    return String(Math.round(latest))
-}
-
-// served from the root so the worker's scope covers every page, not just /public
-router.get('/sw.js', (req, res) => {
-    const version = process.env.ENV !== 'dev' && req.app.locals.gitHash !== "unknown"
-        ? req.app.locals.gitHash
-        : assetsVersion()
-
-    res.type('text/javascript')
-    res.set('Cache-Control', 'no-cache')
-    res.set('Service-Worker-Allowed', '/')
-
-    res.send(fs.readFileSync(SW, 'utf8').replace("%VERSION%", version))
 })
 
 router.get('/teapot', (_, res) => {
