@@ -73,9 +73,6 @@ export default class WebServer {
         } else {
             this.app.locals.tracking = ""
         }
-            
-        this.app.locals.metaUrl = process.env.META_URL || "https://example.com"
-        this.app.locals.metaTitle = process.env.META_TITLE || "School Name"
 
         const gitInfo = await getGitInfo()
         this.app.locals.gitHash = gitInfo.hash

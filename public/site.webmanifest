@@ -1,1 +1,37 @@
-{"name":"","short_name":"","icons":[{"src":"/android-chrome-192x192.png","sizes":"192x192","type":"image/png"},{"src":"/android-chrome-512x512.png","sizes":"512x512","type":"image/png"}],"theme_color":"#363a4f","background_color":"#363a4f","display":"standalone"}
+{
+    "id": "/",
+    "name": "schedule",
+    "short_name": "schedule",
+    "description": "look up class, teacher and classroom schedules",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#181926",
+    "theme_color": "#181926",
+    "icons": [
+        {
+            "src": "/public/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/public/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/public/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        { "name": "lookup class", "url": "/class" },
+        { "name": "lookup teacher", "url": "/teacher" },
+        { "name": "lookup classroom", "url": "/classroom" }
+    ]
+}
