@@ -8,9 +8,7 @@ import logging from "./util/log.ts"
 import process from "node:process"
 
 // ================= ARGUMENTS =================
-import args from "./util/args.ts"
-const argDEBUG = args("--debug", "-d")
-logging(argDEBUG)
+logging(process.env.NODE_ENV === "dev")
 
 // ================= MAIN ================= 
 export let scraper: Scraper
