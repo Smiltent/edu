@@ -1,0 +1,25 @@
+{
+    "home": "home",
+    "offline": "offline",
+
+    "lookup.class": "lookup class",
+    "lookup.teacher": "lookup teacher",
+    "lookup.classroom": "lookup classroom",
+
+    "week": "week",
+    "class": "class",
+    "classroom": "classroom",
+    "teacher": "teacher",
+    "download": "download",
+    "day": "day",
+
+    "times.title": "schedule times",
+    "times.weekdays": "mon - thur",
+    "times.friday": "fri",
+
+    "table.period": "%n%. period",
+    "table.empty": "no schedule saved for that week",
+    "table.offline": "you are offline",
+    "week.current": "(current)",
+    "search.placeholder": "search..."
+}

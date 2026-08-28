@@ -3,7 +3,7 @@ function fold(text) {
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 }
 
-export function setup(element, placeholder = "search...") {
+export function setup(element, placeholder = t("search.placeholder")) {
     if (!element) return
     if (element.dataset.searchable === "true") return
 

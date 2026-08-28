@@ -2,11 +2,17 @@
     <!-- Left side / GitHub Latest Commit -->
     <div class="left">
         <div class="flex-row">
-            <a href="/">home</a>
+            <a href="/"><%= t("home") %></a>
             <p class="c-orange"> // </p>
             <a href="<%= gitUrl %>"><%= gitHash %></a>
+            
+            <% langs.filter(l => l !== lang).forEach((other) => { %>
+                <p class="c-orange"> // </p>
+                <a href="/lang/<%= other %>?back=<%= encodeURIComponent(originalUrl) %>"><%= other %></a>
+            <% }) %>
+
             <p class="c-orange offlineOnly"> // </p>
-            <p class="c-yellow offlineOnly">offline</p>
+            <p class="c-yellow offlineOnly"><%= t("offline") %></p>
         </div>
     </div>
 

@@ -2,19 +2,19 @@
 <%- include('../partials/$header.ejs') %>
 
 <div class="main flex-col">
-    <h1>lookup teacher</h1>
+    <h1><%= t("lookup.teacher") %></h1>
     <div class="controls">
         <div class="field">
-            <label for="selectWeek">week</label>
+            <label for="selectWeek"><%= t("week") %></label>
             <select id="selectWeek"></select>
         </div>
 
         <div class="field">
-            <label for="selectTeacher">teacher</label>
+            <label for="selectTeacher"><%= t("teacher") %></label>
             <select id="selectTeacher"></select>
         </div>
 
-        <button id="downloadBtn">download</button>
+        <button id="downloadBtn"><%= t("download") %></button>
     </div>
 
     <div id="tableContainer"></div>

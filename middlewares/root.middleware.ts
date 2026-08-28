@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from "express"
 import getClientIp from "@/util/realip.ts"
 
 import { SESSION_COOKIE, getSession, touchSession, SESSION_TTL } from "@/services/session.service.ts"
+import { LANG_COOKIE, LANGS, isLang, dictionary, fromHeader, t } from "@/util/i18n.ts"
 
 interface AuthRequest extends Request {
     user?: any
@@ -13,9 +14,18 @@ async function root(req: AuthRequest, res: Response, next: NextFunction) {
 
     res.locals.user = { loggedIn: false }
 
+    const cookieLang = req.cookies?.[LANG_COOKIE]
+    const lang = isLang(cookieLang) ? cookieLang : fromHeader(req.get("accept-language"))
+
+    res.locals.lang = lang
+    res.locals.langs = LANGS
+    res.locals.originalUrl = req.originalUrl
+    res.locals.t = (key: string, vars?: Record<string, string | number>) => t(lang, key, vars)
+
+    res.locals.translations = JSON.stringify(dictionary(lang)).replaceAll("<", "\\u003c")
+
     if (token) {
         try {
-            // set locals with user data (displayed in /)
             const session = await getSession(token)
 
             if (!session) {

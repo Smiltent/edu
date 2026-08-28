@@ -3,11 +3,11 @@
 
 <div class="main flex-col">
     <h1>schedule</h1>
-    <a href="/class">lookup class</a>
-    <a href="/teacher">lookup teacher</a>
-    <a href="/classroom">lookup classroom</a>
+    <a href="/class"><%= t("lookup.class") %></a>
+    <a href="/teacher"><%= t("lookup.teacher") %></a>
+    <a href="/classroom"><%= t("lookup.classroom") %></a>
     <br>
-    <a href="/times">times</a>
+    <a href="/times"><%= t("times.title") %></a>
 </div>
 
 <% if (typeof user !== 'undefined' && user && typeof user.permissions !== 'undefined' && user.permissions && user.permissions.includes("admin")) { %>

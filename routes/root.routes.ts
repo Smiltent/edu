@@ -2,6 +2,7 @@
 import { SESSION_COOKIE, SESSION_TTL, destroySession } from "../services/session.service.ts"
 import { register, login } from "../services/auth.service.ts"
 import { userAuth } from "../middlewares/auth.middleware.ts"
+import { LANG_COOKIE, LANG_TTL, isLang } from "../util/i18n.ts"
 import { times, timesWeekend } from "../util/time.ts"
 import getClientIp from "../util/realip.ts"
 import rateLimit from "express-rate-limit"
@@ -9,7 +10,7 @@ import rateLimit from "express-rate-limit"
 import { Router } from 'express'
 import process from "node:process"
 import path from "node:path"
-import fs from "node:fs"
+
 const router = Router()
 
 const PUBLIC = path.join(import.meta.dirname!, '..', 'public')
@@ -102,6 +103,24 @@ router.get('/logout', userAuth, async (req, res) => {
 
     res.clearCookie(SESSION_COOKIE)
     res.redirect('/')
+})
+
+// ===========================================================
+router.get('/lang/:lang', (req, res) => {
+    const lang = req.params.lang
+
+    if (isLang(lang)) {
+        res.cookie(LANG_COOKIE, lang, {
+            httpOnly: false,
+            secure: process.env.ENV === 'prod',
+            sameSite: 'lax' as const,
+            maxAge: LANG_TTL
+        })
+    }
+
+    // only ever bounce back somewhere on this site
+    const back = String(req.query.back ?? '/')
+    res.redirect(back.startsWith('/') && !back.startsWith('//') ? back : '/')
 })
 
 // ===========================================================

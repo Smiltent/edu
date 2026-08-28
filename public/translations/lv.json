@@ -1,0 +1,25 @@
+{
+    "home": "sākums",
+    "offline": "bezsaistē",
+
+    "lookup.class": "meklēt klasi",
+    "lookup.teacher": "meklēt skolotāju",
+    "lookup.classroom": "meklēt kabinetu",
+
+    "week": "nedēļa",
+    "class": "klase",
+    "classroom": "kabinets",
+    "teacher": "skolotājs",
+    "download": "lejuplādēt",
+    "day": "diena",
+
+    "times.title": "stundu laiki",
+    "times.weekdays": "pirmd. - cetrd.",
+    "times.friday": "piektd.",
+
+    "table.period": "%n%. stunda",
+    "table.empty": "šai nedēļai nav saglabāts saraksts",
+    "table.offline": "tu esi bezsaistē",
+    "week.current": "(tagadējā)",
+    "search.placeholder": "meklēt..."
+}

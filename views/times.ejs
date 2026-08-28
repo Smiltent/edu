@@ -2,8 +2,8 @@
 <%- include('./partials/$header.ejs') %>
 
 <div class="main flex-col">
-    <h1>schedule times</h1>
-    <% const groups = [{ label: "mon - thur", days: "1,2,3,4", rows: times }, { label: "fri", days: "5", rows: timesWeekend }] %>
+    <h1><%= t("times.title") %></h1>
+    <% const groups = [{ label: t("times.weekdays"), days: "1,2,3,4", rows: times }, { label: t("times.friday"), days: "5", rows: timesWeekend }] %>
 
     <div class="timesGrid">
         <% groups.forEach((group) => { %>

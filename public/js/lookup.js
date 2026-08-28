@@ -164,8 +164,8 @@ function createTable(type, container) {
     if (!days.length) {
         const empty = document.createElement('p')
         empty.innerText = navigator.onLine
-            ? 'no schedule saved for that week'
-            : 'you are offline'
+            ? t('table.empty')
+            : t('table.offline')
 
         container.appendChild(empty)
         return
@@ -185,12 +185,12 @@ function createTable(type, container) {
     const dayTr = document.createElement('tr')
 
     const dayTh = document.createElement('th')
-    dayTh.innerText = 'day'
+    dayTh.innerText = t('day')
     dayTr.appendChild(dayTh)
 
     for (let i = 1; i <= maxLessons; i++) {
         const th = document.createElement('th')
-        th.innerText = `${i}. period`
+        th.innerText = t('table.period', { n: i })
         dayTr.appendChild(th)
     }
 
@@ -311,7 +311,7 @@ function setWeekOptions(element, data, primary = null) {
         const label = `[${index + 1}] ${week.dateFrom}`
 
         option.selected = week.id === primary
-        option.textContent = option.selected ? `${label} (current)` : label
+        option.textContent = option.selected ? `${label} ${t('week.current')}` : label
 
         option.value = week.id
         element.appendChild(option)
