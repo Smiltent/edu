@@ -243,6 +243,15 @@ form, select{
     gap: 0.75rem;
 }
 
+.changeList li {
+    padding: 0.3rem;
+    border-radius: 0.25rem;
+}
+
+.changeList li:first-child {
+    background-color: var(--dgray);
+}
+
 .changeMeta {
     color: var(--subtext2);
     font-size: 0.85rem;
