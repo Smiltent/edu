@@ -262,12 +262,6 @@ form, select{
     color: var(--text);
 }
 
-.changeLessonTimes {
-    color: var(--subtext1);
-    font-size: 0.85rem;
-    margin-bottom: 0.15rem;
-}
-
 .changeTimelineArrow {
     display: flex;
     justify-content: center;

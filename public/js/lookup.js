@@ -457,11 +457,7 @@ function renderChangeLessonCell(lesson, type) {
         ? `<span class="group-badge">${lesson.group}</span> `
         : ""
 
-    const times = lesson.start && lesson.end
-        ? `<div class="changeLessonTimes">${lesson.start} - ${lesson.end}</div>`
-        : ""
-
-    cell.innerHTML = times + groupBadge + settings.formats[type]
+    cell.innerHTML = groupBadge + settings.formats[type]
         .replace("%name%", lesson.name)
         .replace("%teacher%", lesson.teacher)
         .replace("%class%", lesson.class)
