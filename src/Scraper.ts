@@ -7,7 +7,7 @@ import cache from "@/util/cache.ts"
 
 import RawScheduleData from "@/models/RawScheduleData.ts"
 import Week from "@/models/Week.ts"
-import { express } from "@/index.ts"
+import { broadcastScheduleNotify } from "@/services/notify.service.ts"
 
 const createHeaders = (url: string) => ({
     "Referer": url,
@@ -79,9 +79,10 @@ export default class Scraper {
                 notifications.push({ week: week.tt_num, type: state, changes })
             })))
 
-            // the cache has to go before the clients are told to refetch, otherwise they get the old data back
             cache.invalidate()
-            notifications.forEach(n => express?.sendWSMessage(JSON.stringify(n)))
+            for (const n of notifications) {
+                await broadcastScheduleNotify(n)
+            }
         } catch (err) {
             console.error(`Failed to store all weeks to database: ${err}`)
         }

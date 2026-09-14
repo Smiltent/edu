@@ -90,12 +90,31 @@ export default class WebServer {
     
     // ================= WEBSOCKETS =================
     private ws() {
+        const PING_MS = 30_000
+
         this.wss.on('connection', (ws) => {
-            console.debug('New Client connected')
+            console.info(`WS client connected (${this.wss.clients.size} total)`)
+
+            ;(ws as WebSocket & { isAlive?: boolean }).isAlive = true
+            ws.on('pong', () => {
+                ;(ws as WebSocket & { isAlive?: boolean }).isAlive = true
+            })
 
             ws.on('error', (err) => console.error(`WebSocket client error: ${err}`))
-            ws.on('close', () => console.debug('Client disconnected'))
+            ws.on('close', () => console.info(`WS client disconnected (${this.wss.clients.size} total)`))
         })
+
+        const pingTimer = setInterval(() => {
+            this.wss.clients.forEach(c => {
+                const client = c as WebSocket & { isAlive?: boolean }
+                if (client.isAlive === false) return client.terminate()
+
+                client.isAlive = false
+                if (client.readyState === WebSocket.OPEN) client.ping()
+            })
+        }, PING_MS)
+
+        this.wss.on('close', () => clearInterval(pingTimer))
 
         this.server.on('upgrade', (req, soc, head) => {
             const url = (req.url ?? '').split('?')[0]
@@ -110,16 +129,29 @@ export default class WebServer {
     }
 
     public sendWSMessage(msg: string) {
-        console.debug(`Sent WS message: ${msg}`)
+        let sent = 0
+
         this.wss.clients.forEach(c => {
             if (c.readyState !== WebSocket.OPEN) return
 
             try {
                 c.send(msg)
+                sent++
             } catch (err) {
                 console.error(`Failed sending WS message to a client: ${err}`)
             }
         })
+
+        console.info(`WS broadcast to ${sent}/${this.wss.clients.size} client(s): ${msg}`)
+        return sent
+    }
+
+    public getWSClientCount() {
+        let open = 0
+        this.wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) open++
+        })
+        return open
     }
 
     private start() {

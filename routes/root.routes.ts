@@ -149,6 +149,12 @@ router.get('/favicon.ico', (_, res) => {
     res.sendFile(path.join(PUBLIC, 'favicon.ico'))
 })
 
+router.get('/sw.js', (_, res) => {
+    res.set("Service-Worker-Allowed", "/")
+    res.set("Cache-Control", "no-cache")
+    res.type("application/javascript").sendFile(path.join(PUBLIC, 'sw.js'))
+})
+
 router.get('/site.webmanifest', (_, res) => {
     res.type('application/manifest+json').sendFile(path.join(PUBLIC, 'site.webmanifest'))
 })

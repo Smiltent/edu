@@ -1,8 +1,5 @@
 const STORAGE_KEY = "scheduleNotify"
 
-/** @typedef {{ type: "class" | "teacher" | "classroom", value: string }} NotifySub */
-/** @typedef {{ day: string, period: number, from: string, to: string, class: string, teachers?: string[], classroom?: string }} SubjectChange */
-
 function getSubscription() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY)
@@ -10,13 +7,12 @@ function getSubscription() {
 
         const sub = JSON.parse(raw)
         if (!sub?.type || !sub?.value) return null
-        return /** @type {NotifySub} */ (sub)
+        return sub
     } catch {
         return null
     }
 }
 
-/** @param {NotifySub | null} sub */
 function setSubscription(sub) {
     if (!sub) localStorage.removeItem(STORAGE_KEY)
     else localStorage.setItem(STORAGE_KEY, JSON.stringify(sub))
@@ -34,84 +30,72 @@ function getMainSelect() {
     return document.querySelector("#selectClass, #selectTeacher, #selectClassroom")
 }
 
-function matchesSubscription(change, sub) {
-    if (sub.type === "class") return change.class === sub.value
-    if (sub.type === "teacher") return (change.teachers ?? []).includes(sub.value)
-    if (sub.type === "classroom") return change.classroom === sub.value
-    return false
+function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+    const raw = atob(base64)
+    const output = new Uint8Array(raw.length)
+    for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i)
+    return output
 }
 
-function formatChanges(changes) {
-    return changes.map(c => `${c.day} ${c.period} | ${c.from} -> ${c.to}`).join("\n")
+async function ensureServiceWorker() {
+    if (!("serviceWorker" in navigator)) throw new Error("service workers unsupported")
+    const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" })
+    await navigator.serviceWorker.ready
+    return reg
 }
 
-function showNotification(title, body) {
-    if (!("Notification" in window) || Notification.permission !== "granted") return
+async function subscribePush(filterType, filterValue) {
+    const keyRes = await fetch("/v2/push/vapidPublicKey").then(r => r.json())
+    if (!keyRes.success || !keyRes.publicKey) throw new Error(keyRes.error || "no vapid key")
+
+    const reg = await ensureServiceWorker()
+
+    let pushSub = await reg.pushManager.getSubscription()
+    if (!pushSub) {
+        pushSub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(keyRes.publicKey)
+        })
+    }
+
+    const body = {
+        subscription: pushSub.toJSON(),
+        filterType,
+        filterValue
+    }
+
+    const res = await fetch("/v2/push/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    })
+
+    const data = await res.json()
+    if (!res.ok || !data.success) throw new Error(data.error || "subscribe failed")
+}
+
+async function unsubscribePush() {
+    if (!("serviceWorker" in navigator)) return
+
+    const reg = await navigator.serviceWorker.getRegistration()
+    const pushSub = await reg?.pushManager.getSubscription()
+    if (!pushSub) return
+
+    const endpoint = pushSub.endpoint
 
     try {
-        new Notification(title, {
-            body,
-            icon: "/public/android-chrome-192x192.png"
-        })
+        await pushSub.unsubscribe()
     } catch (err) {
-        console.warn(`Failed to show notification: ${err}`)
+        console.warn(`Push unsubscribe failed: ${err}`)
     }
-}
 
-function handleMessage(msg) {
-    const sub = getSubscription()
-    if (!sub) return
-
-    const changes = Array.isArray(msg.changes) ? msg.changes : []
-    if (!changes.length) return
-
-    // admin test broadcasts to anyone with notifications enabled
-    const matched = msg.type === "test"
-        ? changes
-        : changes.filter(c => matchesSubscription(c, sub))
-
-    if (!matched.length) return
-
-    showNotification(sub.value, formatChanges(matched))
-}
-
-let socket = null
-let reconnectTimer = null
-
-function connectWS() {
-    if (!getSubscription()) return
-    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
-
-    const proto = location.protocol === "https:" ? "wss:" : "ws:"
-    socket = new WebSocket(`${proto}//${location.host}/v1/ws`)
-
-    socket.addEventListener("message", (event) => {
-        try {
-            handleMessage(JSON.parse(event.data))
-        } catch (err) {
-            console.warn(`Bad WS notification payload: ${err}`)
-        }
-    })
-
-    socket.addEventListener("close", () => {
-        socket = null
-        if (!getSubscription()) return
-
-        clearTimeout(reconnectTimer)
-        reconnectTimer = setTimeout(connectWS, 3000)
-    })
-
-    socket.addEventListener("error", () => socket?.close())
-}
-
-function disconnectWS() {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-
-    if (socket) {
-        socket.close()
-        socket = null
-    }
+    await fetch("/v2/push/subscribe", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint })
+    }).catch(() => {})
 }
 
 function isActiveForCurrent() {
@@ -128,7 +112,9 @@ function updateButton() {
 
     const active = isActiveForCurrent()
     btn.classList.toggle("active", active)
+    btn.classList.toggle("connected", active)
     btn.setAttribute("aria-pressed", active ? "true" : "false")
+
     btn.title = active
         ? (window.t?.("notify.disable") ?? "disable notifications")
         : (window.t?.("notify.enable") ?? "enable notifications")
@@ -140,14 +126,14 @@ async function toggleNotifications() {
     if (!type || !select?.value) return
 
     if (isActiveForCurrent()) {
+        await unsubscribePush()
         setSubscription(null)
-        disconnectWS()
         updateButton()
         return
     }
 
-    if (!("Notification" in window)) {
-        console.warn("Notifications are not supported in this browser")
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        console.warn("Push notifications are not supported in this browser")
         return
     }
 
@@ -161,9 +147,13 @@ async function toggleNotifications() {
         return
     }
 
-    setSubscription({ type, value: select.value })
-    connectWS()
-    updateButton()
+    try {
+        await subscribePush(type, select.value)
+        setSubscription({ type, value: select.value })
+        updateButton()
+    } catch (err) {
+        console.warn(`Failed to enable push notifications: ${err}`)
+    }
 }
 
 function setupButton() {
@@ -184,4 +174,11 @@ function setupButton() {
 }
 
 setupButton()
-if (getSubscription()) connectWS()
+
+// re-sync push subscription if preference was already saved
+const existing = getSubscription()
+if (existing && "serviceWorker" in navigator && "PushManager" in window) {
+    subscribePush(existing.type, existing.value).catch(err => {
+        console.warn(`Failed to restore push subscription: ${err}`)
+    })
+}

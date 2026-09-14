@@ -14,6 +14,7 @@
     "notify": "notify changes",
     "notify.enable": "enable notifications",
     "notify.disable": "disable notifications",
+    "notify.connecting": "connecting...",
     "day": "day",
 
     "times.title": "schedule times",

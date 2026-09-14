@@ -5,6 +5,7 @@ import Express from "./src/Express.ts"
 import Scraper from "./src/Scraper.ts"
 
 import logging from "./util/log.ts"
+import { initPush } from "./services/push.service.ts"
 import process from "node:process"
 
 // ================= ARGUMENTS =================
@@ -22,6 +23,8 @@ async function main() {
 
     const db = new Database(process.env.CONNECTION_STRING!)
     await db.ready
+
+    initPush()
 
     express = new Express(process.env.PORT || "3000")
     scraper = new Scraper(process.env.WEBSITE_URL!)

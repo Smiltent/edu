@@ -1,38 +1,37 @@
+const statusEl = document.getElementById("notifyStatus")
+const pushSubsEl = document.getElementById("pushSubs")
 
-export const settings = {
-    url: `${window.location.origin}/v2/admin`,
-    elements: {
-        users: document.getElementById("userTable")
-    },
+function setStatus(text, ok = true) {
+    if (!statusEl) return
+    statusEl.textContent = text
+    statusEl.className = ok ? "c-yellow" : "c-orange"
 }
 
-//
-//   utils
-//
-async function getUsers() {
-    await fetch(`${settings.url}/users/list`)
-        .then(res => res.json())
-        .then((data) => {
-            setUsers(settings.elements.users, data)
+/**
+ * @param {HTMLFormElement} form
+ */
+function wireNotifyForm(form) {
+    if (!form) return
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault()
+
+        const res = await fetch(form.action, {
+            method: "POST",
+            body: new FormData(form),
+            headers: { Accept: "application/json" }
         })
-}
 
-function setUsers(element, data) {
-    element.innerHTML = ''
+        if (!res.ok) {
+            setStatus(`failed to send (${res.status})`, false)
+            return
+        }
 
-    const table = document.createElement('table')
-    table.style.borderCollapse = 'collapse'
-
-    const maxUsers = data.data.length
-
-    data.forEach((info) => {
-
+        const data = await res.json()
+        if (pushSubsEl && data.pushSubs != null) pushSubsEl.textContent = String(data.pushSubs)
+        setStatus(`push reached ${data.sent} subscription(s)`, data.sent > 0)
     })
 }
 
-//
-//   main
-//
-export default async function init() {
-    await getUsers()
-}
+wireNotifyForm(document.getElementById("testNotifyForm"))
+wireNotifyForm(document.getElementById("specificNotifyForm"))

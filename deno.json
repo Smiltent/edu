@@ -20,12 +20,14 @@
     "express-rate-limit": "npm:express-rate-limit@^8.5.2",
     "mongoose": "npm:mongoose@^8.24.0",
     "ws": "npm:ws@^8.18.3",
+    "web-push": "npm:web-push@^3.6.7",
 
     "@types/cookie-parser": "npm:@types/cookie-parser@^1.4.10",
     "@types/cors": "npm:@types/cors@^2.8.19",
     "@types/express": "npm:@types/express@^5.0.6",
     "@types/express-ejs-layouts": "npm:@types/express-ejs-layouts@^2.5.4",
-    "@types/ws": "npm:@types/ws@^8.18.1"
+    "@types/ws": "npm:@types/ws@^8.18.1",
+    "@types/web-push": "npm:@types/web-push@^3.6.4"
   },
 
   "nodeModulesDir": "auto",
