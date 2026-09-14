@@ -270,7 +270,7 @@ function createTable(type, container) {
                         btn.addEventListener('click', (e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            openChangesModal(lesson.changes)
+                            openChangesModal(lesson, lesson.changes, type)
                         })
                         body.appendChild(btn)
                     }
@@ -374,27 +374,100 @@ const changeDateFmt = new Intl.DateTimeFormat(window.LANG === "lv" ? "lv-LV" : "
 
 let changesModal = null
 
-function formatChangeValue(value) {
-    if (Array.isArray(value)) return value.join(", ")
-    if (value == null || value === "") return "—"
-    return String(value)
-}
-
 function tr(key, fallbacks) {
     const text = t(key)
     if (text !== key) return text
     return fallbacks[window.LANG] ?? fallbacks.lv ?? key
 }
 
-const CHANGE_TYPE_KEYS = {
-    name: "subject",
-    classroom: "classroom",
-    teachers: "teacher",
-    times: "time"
+function copyLesson(lesson) {
+    return {
+        name: lesson.name,
+        teacher: lesson.teacher,
+        classroom: lesson.classroom,
+        class: lesson.class,
+        group: lesson.group,
+        start: lesson.start,
+        end: lesson.end
+    }
 }
 
-function changeTypeLabel(type) {
-    return t(CHANGE_TYPE_KEYS[type] ?? type)
+function applyChange(state, change, reverse = false) {
+    const value = reverse ? change.from : change.to
+
+    switch (change.type) {
+        case "name":
+            state.name = value
+            break
+        case "classroom":
+            state.classroom = value
+            break
+        case "teachers":
+            state.teacher = Array.isArray(value) ? (value[0] ?? "") : String(value ?? "")
+            break
+        case "times": {
+            const match = String(value ?? "").match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/)
+            if (match) {
+                state.start = match[1]
+                state.end = match[2]
+            }
+            break
+        }
+    }
+}
+
+function buildChangeSnapshots(lesson, changes) {
+    const sorted = [...changes].sort((a, b) => new Date(a.date) - new Date(b.date))
+    const state = copyLesson(lesson)
+
+    // walk newest → oldest to recover the original lesson
+    for (let i = sorted.length - 1; i >= 0; i--) {
+        applyChange(state, sorted[i], true)
+    }
+
+    const snapshots = [{ lesson: copyLesson(state), date: null }]
+
+    for (const change of sorted) {
+        applyChange(state, change, false)
+        const last = snapshots[snapshots.length - 1]
+        const sameMoment = last.date && new Date(last.date).getTime() === new Date(change.date).getTime()
+
+        if (sameMoment) {
+            last.lesson = copyLesson(state)
+        } else {
+            snapshots.push({ lesson: copyLesson(state), date: change.date })
+        }
+    }
+
+    return snapshots
+}
+
+function renderChangeLessonCell(lesson, type) {
+    const cell = document.createElement("div")
+    cell.className = "lesson-cell changeLessonCell"
+
+    cell.style.backgroundColor = randomColorFromString(
+        settings.coloring[type]
+            .replace("%name%", lesson.name)
+            .replace("%teacher%", lesson.teacher)
+            .replace("%class%", lesson.class)
+    )
+
+    const groupBadge = lesson.group
+        ? `<span class="group-badge">${lesson.group}</span> `
+        : ""
+
+    const times = lesson.start && lesson.end
+        ? `<div class="changeLessonTimes">${lesson.start} - ${lesson.end}</div>`
+        : ""
+
+    cell.innerHTML = times + groupBadge + settings.formats[type]
+        .replace("%name%", lesson.name)
+        .replace("%teacher%", lesson.teacher)
+        .replace("%class%", lesson.class)
+        .replace("%classroom%", lesson.classroom)
+
+    return cell
 }
 
 function ensureChangesModal() {
@@ -434,7 +507,7 @@ function ensureChangesModal() {
     return overlay
 }
 
-function openChangesModal(changes) {
+function openChangesModal(lesson, changes, type) {
     const overlay = ensureChangesModal()
     const title = overlay.querySelector("#changesModalTitle")
     const closeBtn = overlay.querySelector(".modalClose")
@@ -444,39 +517,35 @@ function openChangesModal(changes) {
     closeBtn.setAttribute("aria-label", tr("changes.close", { en: "close", lv: "aizvērt" }))
     body.replaceChildren()
 
-    const list = document.createElement("ul")
-    list.className = "changeList"
+    const timeline = document.createElement("div")
+    timeline.className = "changeTimeline"
 
-    ;[...changes]
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .forEach((change) => {
-            const item = document.createElement("li")
+    // newest on top, oldest at the bottom — arrows point up
+    const snapshots = buildChangeSnapshots(lesson, changes).reverse()
 
+    snapshots.forEach((snapshot, i) => {
+        if (i > 0) {
+            const arrow = document.createElement("div")
+            arrow.className = "changeTimelineArrow"
+            arrow.innerHTML = '<i class="fa-solid fa-arrow-up"></i>'
+            timeline.appendChild(arrow)
+        }
+
+        const item = document.createElement("div")
+        item.className = "changeSnapshot" + (i === 0 ? " changeSnapshotRecent" : "")
+
+        if (snapshot.date) {
             const meta = document.createElement("div")
             meta.className = "changeMeta"
-            meta.textContent = `${changeTypeLabel(change.type)} · ${changeDateFmt.format(new Date(change.date))}`
+            meta.textContent = changeDateFmt.format(new Date(snapshot.date))
+            item.appendChild(meta)
+        }
 
-            const values = document.createElement("div")
-            values.className = "changeValues"
+        item.appendChild(renderChangeLessonCell(snapshot.lesson, type))
+        timeline.appendChild(item)
+    })
 
-            const from = document.createElement("span")
-            from.className = "changeFrom"
-            from.textContent = formatChangeValue(change.from)
-
-            const arrow = document.createElement("span")
-            arrow.className = "changeArrow"
-            arrow.textContent = " → "
-
-            const to = document.createElement("span")
-            to.className = "changeTo"
-            to.textContent = formatChangeValue(change.to)
-
-            values.append(from, arrow, to)
-            item.append(meta, values)
-            list.appendChild(item)
-        })
-
-    body.appendChild(list)
+    body.appendChild(timeline)
     overlay.hidden = false
 }
 

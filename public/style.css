@@ -236,42 +236,44 @@ form, select{
     color: var(--text);
 }
 
-.changeList {
-    list-style: none;
+.changeTimeline {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    align-items: stretch;
+    gap: 0.35rem;
 }
 
-.changeList li {
+.changeSnapshot {
     padding: 0.3rem;
     border-radius: 0.25rem;
 }
 
-.changeList li:first-child {
+.changeSnapshotRecent {
     background-color: var(--dgray);
 }
 
 .changeMeta {
     color: var(--subtext2);
     font-size: 0.85rem;
-    margin-bottom: 0.15rem;
+    margin-bottom: 0.25rem;
 }
 
-.changeValues {
+.changeLessonCell {
     color: var(--text);
 }
 
-.changeFrom {
-    color: var(--red);
+.changeLessonTimes {
+    color: var(--subtext1);
+    font-size: 0.85rem;
+    margin-bottom: 0.15rem;
 }
 
-.changeTo {
-    color: var(--green);
-}
-
-.changeArrow {
+.changeTimelineArrow {
+    display: flex;
+    justify-content: center;
     color: var(--subtext2);
+    font-size: 0.85rem;
+    line-height: 1;
 }
 
 .lesson-cell.now,
