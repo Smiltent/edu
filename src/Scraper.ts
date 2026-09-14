@@ -66,7 +66,7 @@ export default class Scraper {
                 }
             })))
 
-            const notifications: { week: string, type: string }[] = []
+            const notifications: { week: string, type: string, changes: Awaited<ReturnType<Schedule["storeLessonData"]>> }[] = []
 
             await Promise.all(this.weeks.timetables.map((week: any) => limit(async () => {
                 const state = await this.storeWeekToDatabase(week.tt_num)
@@ -74,9 +74,9 @@ export default class Scraper {
 
                 const parser = new Schedule()
                 await parser.i(week.tt_num)
-                await parser.storeLessonData()
+                const changes = await parser.storeLessonData()
 
-                notifications.push({ week: week.tt_num, type: state })
+                notifications.push({ week: week.tt_num, type: state, changes })
             })))
 
             // the cache has to go before the clients are told to refetch, otherwise they get the old data back

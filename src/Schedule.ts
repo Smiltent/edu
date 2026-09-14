@@ -18,6 +18,16 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Pr
     throw new Error("unreachable")
 }
 
+export type SubjectChange = {
+    day: string
+    period: number
+    from: string
+    to: string
+    class: string
+    teachers: string[]
+    classroom: string
+}
+
 export default class Schedule {
     private week!: string
     private addedParsedDaysData: string[] = []
@@ -38,12 +48,16 @@ export default class Schedule {
 
     /**
      * Stores the parsed lesson into the database
+     * @returns Subject name changes detected during this parse
      */
-    public async storeLessonData() {
+    public async storeLessonData(): Promise<SubjectChange[]> {
         if (!this.index) await this.loadIndex(this.week)
 
         const weekObjectId = await Week.findOne({ id: this.week })
-        if (weekObjectId === null) return console.error("Week doesn't exist...")
+        if (weekObjectId === null) {
+            console.error("Week doesn't exist...")
+            return []
+        }
 
         if (!this.addedParsedDaysData.includes(this.week)) {
             const days = this.index.daysRows.map((day: any) => day.name);
@@ -69,6 +83,7 @@ export default class Schedule {
 
         const bulkOps: any[] = []
         const seenKeys = new Set<string>()
+        const subjectChanges: SubjectChange[] = []
             
         for (const card of this.index.cards) {
             // get lesson information
@@ -87,7 +102,8 @@ export default class Schedule {
             const dayInfo = this.getDayById(card.days)
             if (!dayInfo) continue
 
-            const { day, isLastDayOfWeek } = dayInfo
+            const { day, isLastDayOfWeek, name: dayName, shortName } = dayInfo
+            const dayLabel = (dayName ?? "").split(",")[0].trim() || shortName || day
             const duration = Math.ceil(lesson.durationperiods / 2)
             const basePeriod = Math.ceil(card.period / 2)
 
@@ -130,9 +146,20 @@ export default class Schedule {
                                 date: new Date(), type: "classroom", from: existing.classroom, to: data.classroom
                             })
 
-                            if (existing.name !== data.name) changes.push({ 
-                                date: new Date(), type: "name", from: existing.name, to: data.name
-                            })
+                            if (existing.name !== data.name) {
+                                changes.push({ 
+                                    date: new Date(), type: "name", from: existing.name, to: data.name
+                                })
+                                subjectChanges.push({
+                                    day: dayLabel,
+                                    period,
+                                    from: existing.name,
+                                    to: data.name,
+                                    class: clazz.name,
+                                    teachers: data.teachers,
+                                    classroom: data.classroom
+                                })
+                            }
 
                             if (JSON.stringify([...existing.teachers].sort()) !== JSON.stringify([...data.teachers].sort())) changes.push({
                                 date: new Date(), type: "teachers", from: existing.teachers, to: data.teachers
@@ -180,6 +207,7 @@ export default class Schedule {
         }
 
         console.debug(`Stored Lesson Data for Week ${this.week}`)
+        return subjectChanges
     }
 
     /**

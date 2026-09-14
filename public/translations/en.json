@@ -11,6 +11,9 @@
     "classroom": "classroom",
     "teacher": "teacher",
     "download": "download",
+    "notify": "notify changes",
+    "notify.enable": "enable notifications",
+    "notify.disable": "disable notifications",
     "day": "day",
 
     "times.title": "schedule times",

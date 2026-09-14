@@ -27,7 +27,10 @@ router.post(`/sendTestNotification`, userAuth, requirePermission('admin'), (_req
     express.sendWSMessage(JSON.stringify({
         week: scraper.currentWeek,
         type: "test",
-        changedClasses: ["all"]
+        changes: [
+            { day: "Pirmdiena", period: 1, from: "Subject A", to: "Subject B", class: "all", teachers: ["all"], classroom: "all" },
+            { day: "Otrdiena", period: 3, from: "Subject C", to: "Subject D", class: "all", teachers: ["all"], classroom: "all" }
+        ]
     }))
 
     res.redirect('/admin')
@@ -40,7 +43,9 @@ router.post(`/sendSpecificTestNotification`, userAuth, requirePermission('admin'
     express.sendWSMessage(JSON.stringify({
         week: week,
         type,
-        changedClasses: [ String(clazz) ]
+        changes: [
+            { day: "Pirmdiena", period: 1, from: "Subject A", to: "Subject B", class: String(clazz), teachers: [], classroom: "" }
+        ]
     }))
 
     res.redirect('/admin')

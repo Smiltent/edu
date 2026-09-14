@@ -14,7 +14,10 @@
             <select id="selectClass"></select>
         </div>
 
-        <button id="downloadBtn"><%= t("download") %></button>
+        <div class="actionBtns">
+            <button id="downloadBtn" type="button"><%= t("download") %></button>
+            <button id="notifyBtn" type="button" aria-pressed="false"><%= t("notify") %></button>
+        </div>
     </div>
 
     <div id="tableContainer"></div>

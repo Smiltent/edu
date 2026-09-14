@@ -11,6 +11,9 @@
     "classroom": "kabinets",
     "teacher": "skolotājs",
     "download": "lejuplādēt",
+    "notify": "paziņot izmaiņas",
+    "notify.enable": "ieslēgt paziņojumus",
+    "notify.disable": "izslēgt paziņojumus",
     "day": "diena",
 
     "times.title": "stundu laiki",

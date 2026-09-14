@@ -320,19 +320,28 @@ body.offline .offlineOnly {
     margin-right: 0;
 }
 
-/* =========== DOWNLOAD BUTTON =========== */
-.downloadContainer {
-    margin-top: auto;
-    margin-bottom: auto;
+/* =========== ACTION BUTTONS =========== */
+.actionBtns {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: flex-end;
 }
 
-#downloadBtn {
+#downloadBtn,
+#notifyBtn {
     background-color: var(--dgray);
     color: var(--text);
     border: none;
     border-radius: 0.25rem;
     padding: 0.5rem 1rem;
     cursor: pointer;
+}
+
+#notifyBtn.active {
+    background-color: var(--orange);
+    color: var(--bg);
 }
 
 /* =========== TIMES =========== */
@@ -474,8 +483,14 @@ body.offline .offlineOnly {
         width: 100%;
     }
 
-    .controls #downloadBtn {
+    .controls .actionBtns {
+        width: 100%;
         margin-top: 1rem;
+    }
+
+    .controls #downloadBtn,
+    .controls #notifyBtn {
+        flex: 1;
     }
 
     #tableContainer table {
