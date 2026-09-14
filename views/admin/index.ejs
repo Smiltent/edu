@@ -27,4 +27,10 @@
     <form action="/v2/admin/sendTestNotification" method="POST">
         <input type="submit" value="send test websocket notification">
     </form>
+    <form action="/v2/admin/sendSpecificTestNotification" method="POST">
+        <input type="text" name="week" placeholder="week" required>
+        <input type="text" name="clazz" placeholder="class" required>
+        <input type="text" name="type" placeholder="type" value="update" required>
+        <input type="submit" value="send specific test notification">
+    </form>
 </div>
