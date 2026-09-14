@@ -18,7 +18,7 @@ async function root(req: AuthRequest, res: Response, next: NextFunction) {
     const lang = isLang(cookieLang) ? cookieLang : fromHeader(req.get("accept-language"))
 
     res.locals.lang = lang
-    res.locals.langs = LANGS
+    res.locals.langs = LANGS()
     res.locals.originalUrl = req.originalUrl
     res.locals.t = (key: string, vars?: Record<string, string | number>) => t(lang, key, vars)
 

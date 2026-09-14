@@ -18,8 +18,14 @@
     "times.friday": "piektd.",
 
     "table.period": "%n%. stunda",
-    "table.empty": "šai nedēļai nav saglabāts saraksts",
+    "table.empty": "šai nedēļai nav saglabāts stundu saraksts",
     "table.offline": "tu esi bezsaistē",
     "week.current": "(tagadējā)",
-    "search.placeholder": "meklēt..."
+    "search.placeholder": "meklēt...",
+
+    "subject": "priekšmets",
+    "time": "laiks",
+
+    "changes.title": "stundas izmaiņas",
+    "changes.close": "aizvērt"
 }

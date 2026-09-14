@@ -5,33 +5,46 @@ import fs from "node:fs"
 const DIR = path.join(import.meta.dirname!, '..', 'public', 'translations')
 
 export const LANG_COOKIE = "lang"
-export const LANG_TTL = 365 * 24 * 60 * 60 * 1000 // a year
-
-// what an unrecognised (or missing) Accept-Language falls back to
+export const LANG_TTL = 365 * 24 * 60 * 60 * 1000
 export const DEFAULT_LANG = "lv"
 
 type Dict = Record<string, string>
 
 const translations: Record<string, Dict> = {}
+const mtimes: Record<string, number> = {}
 
-for (const file of fs.readdirSync(DIR).filter(f => f.endsWith(".json"))) {
-    const lang = path.basename(file, ".json")
+function loadTranslations() {
+    for (const file of fs.readdirSync(DIR).filter(f => f.endsWith(".json"))) {
+        const lang = path.basename(file, ".json")
+        const fullPath = path.join(DIR, file)
+        const mtime = fs.statSync(fullPath).mtimeMs
 
-    try {
-        translations[lang] = JSON.parse(fs.readFileSync(path.join(DIR, file), "utf-8"))
-        console.debug(`Loaded translation ${lang} (${Object.keys(translations[lang]!).length} keys)`)
-    } catch (err) {
-        console.error(`Failed to load translation ${file}: ${err}`)
+        if (mtimes[lang] === mtime && translations[lang]) continue
+
+        try {
+            translations[lang] = JSON.parse(fs.readFileSync(fullPath, "utf-8"))
+            mtimes[lang] = mtime
+            console.debug(`Loaded translation ${lang} (${Object.keys(translations[lang]!).length} keys)`)
+        } catch (err) {
+            console.error(`Failed to load translation ${file}: ${err}`)
+        }
     }
 }
 
-export const LANGS = Object.keys(translations).sort()
+loadTranslations()
+
+export function LANGS(): string[] {
+    loadTranslations()
+    return Object.keys(translations).sort()
+}
 
 export function isLang(lang: unknown): lang is string {
+    loadTranslations()
     return typeof lang === "string" && Object.hasOwn(translations, lang)
 }
 
 export function dictionary(lang: string): Dict {
+    loadTranslations()
     return translations[lang] ?? translations[DEFAULT_LANG] ?? {}
 }
 
@@ -43,6 +56,8 @@ export function dictionary(lang: string): Dict {
  * @param vars values for %placeholders% inside the string
  */
 export function t(lang: string, key: string, vars?: Record<string, string | number>): string {
+    loadTranslations()
+
     let text = translations[lang]?.[key] ?? translations[DEFAULT_LANG]?.[key] ?? key
 
     if (vars) {
@@ -54,9 +69,6 @@ export function t(lang: string, key: string, vars?: Record<string, string | numb
     return text
 }
 
-/**
- * Pick the best supported language out of an Accept-Language header
- */
 export function fromHeader(header?: string): string {
     if (!header) return DEFAULT_LANG
 
@@ -75,7 +87,6 @@ export function fromHeader(header?: string): string {
         .sort((a, b) => b.q - a.q)
 
     for (const { tag } of wanted) {
-        // "lv-LV" should still match "lv"
         const base = tag.split("-")[0]!
 
         if (isLang(tag)) return tag

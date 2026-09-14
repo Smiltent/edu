@@ -138,7 +138,8 @@ async function getWeekData(type, week, getter) {
                                 teacher: l.teachers[0],
                                 classroom: l.classroom,
                                 class: l.class.join(", "),
-                                group: l.group[0] === "all" ? null : l.group[0].replace("grupa", "gr.")
+                                group: l.group[0] === "all" ? null : l.group[0].replace("grupa", "gr."),
+                                changes: Array.isArray(l.changes) ? l.changes : []
                             })))
                     } else {
                         arr.push(null) 
@@ -254,11 +255,36 @@ function createTable(type, container) {
                         ? `<span class="group-badge">${lesson.group}</span> `
                         : ''
 
-                    target.innerHTML = groupBadge + settings.formats[type]
+                    const body = document.createElement('div')
+                    body.className = 'lesson-body'
+
+                    if (lesson.changes?.length) {
+                        const btn = document.createElement('button')
+                        btn.type = 'button'
+                        btn.className = 'change-btn'
+                        
+                        btn.title = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
+                        btn.setAttribute('aria-label', btn.title)
+                        btn.innerHTML = '<i class="fa-solid fa-code-compare"></i>'
+
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            openChangesModal(lesson.changes)
+                        })
+                        body.appendChild(btn)
+                    }
+
+                    const text = document.createElement('div')
+                    text.className = 'lesson-text'
+                    text.innerHTML = groupBadge + settings.formats[type]
                         .replace('%name%', lesson.name)
                         .replace('%teacher%', `<a class="colorText" href="/teacher?teacher=${encodeURIComponent(lesson.teacher)}">${lesson.teacher}</a>`)
                         .replace('%class%', `<a class="colorText" href="/class?class=${encodeURIComponent(lesson.class)}">${lesson.class}</a>`)
                         .replace('%classroom%', `<a class="colorText" href="/classroom?classroom=${encodeURIComponent(lesson.classroom)}">${lesson.classroom}</a>`)
+
+                    body.appendChild(text)
+                    target.replaceChildren(body)
 
                     if (isGrouped) cellContainer.appendChild(target)
                 })
@@ -338,6 +364,123 @@ function setMainOptions(element, data, primary = null, searchable) {
 }
 
 //
+//   changes modal
+//
+const changeDateFmt = new Intl.DateTimeFormat(window.LANG === "lv" ? "lv-LV" : "en-GB", {
+    timeZone: "Europe/Riga",
+    dateStyle: "medium",
+    timeStyle: "short"
+})
+
+let changesModal = null
+
+function formatChangeValue(value) {
+    if (Array.isArray(value)) return value.join(", ")
+    if (value == null || value === "") return "—"
+    return String(value)
+}
+
+function tr(key, fallbacks) {
+    const text = t(key)
+    if (text !== key) return text
+    return fallbacks[window.LANG] ?? fallbacks.lv ?? key
+}
+
+const CHANGE_TYPE_KEYS = {
+    name: "subject",
+    classroom: "classroom",
+    teachers: "teacher",
+    times: "time"
+}
+
+function changeTypeLabel(type) {
+    return t(CHANGE_TYPE_KEYS[type] ?? type)
+}
+
+function ensureChangesModal() {
+    if (changesModal) return changesModal
+
+    const overlay = document.createElement("div")
+    overlay.className = "modalOverlay"
+    overlay.hidden = true
+    overlay.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="changesModalTitle">
+            <div class="modalHeader">
+                <h2 id="changesModalTitle"></h2>
+                <button type="button" class="modalClose">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modalBody"></div>
+        </div>
+    `
+
+    const close = () => {
+        overlay.hidden = true
+    }
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close()
+    })
+
+    overlay.querySelector(".modalClose").addEventListener("click", close)
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !overlay.hidden) close()
+    })
+
+    document.body.appendChild(overlay)
+    changesModal = overlay
+    return overlay
+}
+
+function openChangesModal(changes) {
+    const overlay = ensureChangesModal()
+    const title = overlay.querySelector("#changesModalTitle")
+    const closeBtn = overlay.querySelector(".modalClose")
+    const body = overlay.querySelector(".modalBody")
+
+    title.textContent = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
+    closeBtn.setAttribute("aria-label", tr("changes.close", { en: "close", lv: "aizvērt" }))
+    body.replaceChildren()
+
+    const list = document.createElement("ul")
+    list.className = "changeList"
+
+    ;[...changes]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .forEach((change) => {
+            const item = document.createElement("li")
+
+            const meta = document.createElement("div")
+            meta.className = "changeMeta"
+            meta.textContent = `${changeTypeLabel(change.type)} · ${changeDateFmt.format(new Date(change.date))}`
+
+            const values = document.createElement("div")
+            values.className = "changeValues"
+
+            const from = document.createElement("span")
+            from.className = "changeFrom"
+            from.textContent = formatChangeValue(change.from)
+
+            const arrow = document.createElement("span")
+            arrow.className = "changeArrow"
+            arrow.textContent = " → "
+
+            const to = document.createElement("span")
+            to.className = "changeTo"
+            to.textContent = formatChangeValue(change.to)
+
+            values.append(from, arrow, to)
+            item.append(meta, values)
+            list.appendChild(item)
+        })
+
+    body.appendChild(list)
+    overlay.hidden = false
+}
+
+//
 //   now
 //
 const riga = new Intl.DateTimeFormat("en-GB", {
@@ -376,14 +519,28 @@ export function markNow() {
     const now = rigaNow()
     const thisWeek = settings.weekDates[settings.values.week] === now.monday
 
-    document.querySelectorAll('.lesson-cell[data-start]').forEach(cell => {
-        const active = thisWeek
-            && Number(cell.dataset.day) === now.index
-            && now.minutes >= toMinutes(cell.dataset.start)
-            && now.minutes < toMinutes(cell.dataset.end)
+    let current = null
+    let next = null
+    let nextStart = Infinity
 
-        cell.classList.toggle('now', active)
+    document.querySelectorAll('.lesson-cell[data-start]').forEach(cell => {
+        cell.classList.remove('now', 'next')
+
+        if (!thisWeek || Number(cell.dataset.day) !== now.index) return
+
+        const start = toMinutes(cell.dataset.start)
+        const end = toMinutes(cell.dataset.end)
+
+        if (now.minutes >= start && now.minutes < end) {
+            current = cell
+        } else if (now.minutes < start && start < nextStart) {
+            nextStart = start
+            next = cell
+        }
     })
+
+    if (current) current.classList.add('now')
+    else if (next) next.classList.add('next')
 }
 
 //

@@ -37,7 +37,7 @@ router.get('/:id/week/:week', async (req, res) => {
         if (!weekDoc) return res.status(404).json({ success: false, data: 'Week not found' })
 
         const lessons = await Lesson.find({ week: weekDoc._id, class: id })
-            .select('-_id -__v -week -changes')
+            .select('-_id -__v -week')
             .sort({ day: 1, period: 1 })
 
         if (!lessons.length) return res.status(404).json({ success: false, data: 'No data found for that week (not saved)' })

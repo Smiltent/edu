@@ -52,7 +52,7 @@ export default class WebServer {
             )
         )
         this.app.set("view engine", "ejs")
-        this.app.set("layout", "partials/$layout")
+        this.app.set("layout", "components/$layout")
         this.app.use(expressLayouts)
 
         this.app.set("trust proxy", [

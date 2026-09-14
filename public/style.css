@@ -149,9 +149,142 @@ form, select{
     border-radius: 0.25rem;
 }
 
-.lesson-cell.now {
-    outline: 2px solid var(--green);
+.lesson-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.lesson-text {
+    min-width: 0;
+    flex: 1;
+}
+
+.change-btn {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--yellow);
+    cursor: pointer;
+    line-height: 1.2;
+    font-size: 0.95rem;
+}
+
+.change-btn:hover {
+    color: var(--orange);
+}
+
+.lesson-group-entry {
+    padding: 0.35rem;
+}
+
+.lesson-group-entry .lesson-body {
+    padding: 0;
+}
+
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.modalOverlay[hidden] {
+    display: none;
+}
+
+.modal {
+    width: min(28rem, 100%);
+    max-height: min(80vh, 36rem);
+    overflow: auto;
+    background: var(--bg);
+    border: 1px solid var(--dgray);
+    border-radius: 0.35rem;
+    padding: 1rem;
+}
+
+.modalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.modalHeader h2 {
+    padding: 0;
+    font-size: 1.15rem;
+}
+
+.modalClose {
+    border: none;
+    background: none;
+    color: var(--subtext1);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0.15rem;
+}
+
+.modalClose:hover {
+    color: var(--text);
+}
+
+.changeList {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.changeMeta {
+    color: var(--subtext2);
+    font-size: 0.85rem;
+    margin-bottom: 0.15rem;
+}
+
+.changeValues {
+    color: var(--text);
+}
+
+.changeFrom {
+    color: var(--red);
+}
+
+.changeTo {
+    color: var(--green);
+}
+
+.changeArrow {
+    color: var(--subtext2);
+}
+
+.lesson-cell.now,
+.lesson-cell.next {
+    outline: 2px solid color-mix(in srgb, var(--green) 70%, #8b9488);
     outline-offset: -1px;
+    box-shadow: 0 0 0.3rem color-mix(in srgb, var(--green) 22%, transparent);
+}
+
+.lesson-cell.next {
+    animation: lesson-next-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes lesson-next-glow {
+    0%, 100% {
+        box-shadow: 0 0 0.15rem color-mix(in srgb, var(--green) 14%, transparent);
+        outline-color: color-mix(in srgb, var(--green) 55%, #8b9488);
+    }
+    50% {
+        box-shadow: 0 0 0.35rem color-mix(in srgb, var(--green) 28%, transparent);
+        outline-color: color-mix(in srgb, var(--green) 75%, #8b9488);
+    }
 }
 
 /* pwa.js puts .offline on the body whenever the connection drops */

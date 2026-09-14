@@ -21,5 +21,11 @@
     "table.empty": "no schedule saved for that week",
     "table.offline": "you are offline",
     "week.current": "(current)",
-    "search.placeholder": "search..."
+    "search.placeholder": "search...",
+
+    "subject": "subject",
+    "time": "time",
+
+    "changes.title": "schedule changes",
+    "changes.close": "close"
 }
