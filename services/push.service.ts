@@ -47,7 +47,7 @@ export function getVapidPublicKey() {
 }
 
 function formatChanges(changes: SubjectChange[]) {
-    return changes.map(c => `${c.day} ${c.period} | ${c.from} -> ${c.to}`).join("\n")
+    return changes.map(c => `${c.day} #${c.period} | ${c.from} -> ${c.to}`).join("\n")
 }
 
 function matchesFilter(change: SubjectChange, filterType: string, filterValue: string) {
