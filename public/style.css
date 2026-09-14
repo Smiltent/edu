@@ -502,9 +502,9 @@ body.offline .offlineOnly {
         display: none;
     }
 
-    #tableContainer table td:empty {
+    /* #tableContainer table td:empty {
         display: none;
-    }
+    } */
 
     td {
         display: flex;
