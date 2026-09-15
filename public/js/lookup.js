@@ -139,6 +139,7 @@ async function getWeekData(type, week, getter) {
                                 classroom: l.classroom,
                                 class: l.class.join(", "),
                                 group: l.group[0] === "all" ? null : l.group[0].replace("grupa", "gr."),
+                                removed: !!l.removed,
                                 changes: Array.isArray(l.changes) ? l.changes : []
                             })))
                     } else {
@@ -217,77 +218,110 @@ function createTable(type, container) {
             cellContainer.classList.add("lesson-cell")
 
             if (lessons != null) {
-                const isGrouped = lessons.length > 1
+                const activeLessons = lessons.filter(l => !l.removed)
+                const removedLessons = lessons.filter(l => l.removed)
+                const isGrouped = activeLessons.length > 1
 
-                if (lessons[0].start && lessons[0].end) {
-                    cellContainer.dataset.day = day.index
-                    cellContainer.dataset.start = lessons[0].start
-                    cellContainer.dataset.end = lessons[0].end
-                }
-
-                if (isGrouped) {
-                    cellContainer.style.overflow = 'hidden'
-                    cellContainer.style.padding = '0'
-                }
-
-                lessons.forEach((lesson, i) => {
-                    const target = isGrouped ? document.createElement('div') : cellContainer
-
-                    target.style.backgroundColor = randomColorFromString(
-                        settings.coloring[type]
-                            .replace('%name%', lesson.name)
-                            .replace('%teacher%', lesson.teacher)
-                            .replace('%class%', lesson.class)
+                if (activeLessons.length === 0) {
+                    const hasLessonAfter = day.data.slice(index + 1).some(slot =>
+                        slot !== null && slot.some(l => !l.removed)
                     )
 
-                    if (isGrouped) {
-                        target.className = 'lesson-group-entry'
-                        const isFirst = i === 0
-                        const isLast = i === lessons.length - 1
-                        target.style.borderRadius = isFirst
-                            ? '0.25rem 0.25rem 0 0'
-                            : isLast
-                                ? '0 0 0.25rem 0.25rem'
-                                : '0'
+                    if (hasLessonAfter || removedLessons.some(l => l.changes?.length)) {
+                        cellContainer.style.backgroundColor = "var(--dgray)"
                     }
 
-                    const groupBadge = lesson.group
-                        ? `<span class="group-badge">${lesson.group}</span> `
-                        : ''
+                    const withChanges = removedLessons.find(l => l.changes?.length)
+                    if (withChanges) {
+                        const body = document.createElement('div')
+                        body.className = 'lesson-body'
 
-                    const body = document.createElement('div')
-                    body.className = 'lesson-body'
-
-                    if (lesson.changes?.length) {
                         const btn = document.createElement('button')
                         btn.type = 'button'
                         btn.className = 'change-btn'
-                        
                         btn.title = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
                         btn.setAttribute('aria-label', btn.title)
                         btn.innerHTML = '<i class="fa-solid fa-code-compare"></i>'
-
                         btn.addEventListener('click', (e) => {
                             e.preventDefault()
                             e.stopPropagation()
-                            openChangesModal(lesson, lesson.changes, type)
+                            openChangesModal(withChanges, withChanges.changes, type)
                         })
+
                         body.appendChild(btn)
+                        cellContainer.appendChild(body)
+                    }
+                } else {
+                    if (activeLessons[0].start && activeLessons[0].end) {
+                        cellContainer.dataset.day = day.index
+                        cellContainer.dataset.start = activeLessons[0].start
+                        cellContainer.dataset.end = activeLessons[0].end
                     }
 
-                    const text = document.createElement('div')
-                    text.className = 'lesson-text'
-                    text.innerHTML = groupBadge + settings.formats[type]
-                        .replace('%name%', lesson.name)
-                        .replace('%teacher%', `<a class="colorText" href="/teacher?teacher=${encodeURIComponent(lesson.teacher)}">${lesson.teacher}</a>`)
-                        .replace('%class%', `<a class="colorText" href="/class?class=${encodeURIComponent(lesson.class)}">${lesson.class}</a>`)
-                        .replace('%classroom%', `<a class="colorText" href="/classroom?classroom=${encodeURIComponent(lesson.classroom)}">${lesson.classroom}</a>`)
+                    if (isGrouped) {
+                        cellContainer.style.overflow = 'hidden'
+                        cellContainer.style.padding = '0'
+                    }
 
-                    body.appendChild(text)
-                    target.replaceChildren(body)
+                    activeLessons.forEach((lesson, i) => {
+                        const target = isGrouped ? document.createElement('div') : cellContainer
 
-                    if (isGrouped) cellContainer.appendChild(target)
-                })
+                        target.style.backgroundColor = randomColorFromString(
+                            settings.coloring[type]
+                                .replace('%name%', lesson.name)
+                                .replace('%teacher%', lesson.teacher)
+                                .replace('%class%', lesson.class)
+                        )
+
+                        if (isGrouped) {
+                            target.className = 'lesson-group-entry'
+                            const isFirst = i === 0
+                            const isLast = i === activeLessons.length - 1
+                            target.style.borderRadius = isFirst
+                                ? '0.25rem 0.25rem 0 0'
+                                : isLast
+                                    ? '0 0 0.25rem 0.25rem'
+                                    : '0'
+                        }
+
+                        const groupBadge = lesson.group
+                            ? `<span class="group-badge">${lesson.group}</span> `
+                            : ''
+
+                        const body = document.createElement('div')
+                        body.className = 'lesson-body'
+
+                        if (lesson.changes?.length) {
+                            const btn = document.createElement('button')
+                            btn.type = 'button'
+                            btn.className = 'change-btn'
+                            
+                            btn.title = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
+                            btn.setAttribute('aria-label', btn.title)
+                            btn.innerHTML = '<i class="fa-solid fa-code-compare"></i>'
+
+                            btn.addEventListener('click', (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openChangesModal(lesson, lesson.changes, type)
+                            })
+                            body.appendChild(btn)
+                        }
+
+                        const text = document.createElement('div')
+                        text.className = 'lesson-text'
+                        text.innerHTML = groupBadge + settings.formats[type]
+                            .replace('%name%', lesson.name)
+                            .replace('%teacher%', `<a class="colorText" href="/teacher?teacher=${encodeURIComponent(lesson.teacher)}">${lesson.teacher}</a>`)
+                            .replace('%class%', `<a class="colorText" href="/class?class=${encodeURIComponent(lesson.class)}">${lesson.class}</a>`)
+                            .replace('%classroom%', `<a class="colorText" href="/classroom?classroom=${encodeURIComponent(lesson.classroom)}">${lesson.classroom}</a>`)
+
+                        body.appendChild(text)
+                        target.replaceChildren(body)
+
+                        if (isGrouped) cellContainer.appendChild(target)
+                    })
+                }
             } else {
                 const hasLessonAfter = day.data.slice(index + 1).some(l => l !== null)
 
@@ -445,6 +479,12 @@ function buildChangeSnapshots(lesson, changes) {
 function renderChangeLessonCell(lesson, type) {
     const cell = document.createElement("div")
     cell.className = "lesson-cell changeLessonCell"
+
+    if (!lesson.name) {
+        cell.style.backgroundColor = "var(--dgray)"
+        cell.style.minHeight = "2.25rem"
+        return cell
+    }
 
     cell.style.backgroundColor = randomColorFromString(
         settings.coloring[type]

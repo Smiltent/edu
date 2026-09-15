@@ -72,7 +72,7 @@ export default class Schedule {
         }
 
         const existingLessons = await Lesson.find({ week: weekObjectId })
-            .select('period day class group classroom name teachers lessonStart lessonEnd')
+            .select('period day class group classroom name teachers lessonStart lessonEnd removed')
             .lean()
         const existingMap = new Map(
             existingLessons.map(l => [
@@ -132,7 +132,8 @@ export default class Schedule {
                             name: subject?.name ?? "N/A",
                             teachers: teachers?.map((t: any) => t.name) ?? [],
                             lessonStart: times[0],
-                            lessonEnd: times[1]
+                            lessonEnd: times[1],
+                            removed: false
                         }
 
                         const key = `${period}-${day}-${clazz.name}-${groupName}`
@@ -140,20 +141,21 @@ export default class Schedule {
 
                         const existing = existingMap.get(key)
                         const changes: any[] = []
+                        const now = new Date()
 
                         if (existing) {
                             if (existing.classroom !== data.classroom) changes.push({
-                                date: new Date(), type: "classroom", from: existing.classroom, to: data.classroom
+                                date: now, type: "classroom", from: existing.classroom, to: data.classroom
                             })
 
                             if (existing.name !== data.name) {
                                 changes.push({ 
-                                    date: new Date(), type: "name", from: existing.name, to: data.name
+                                    date: now, type: "name", from: existing.name, to: data.name
                                 })
                                 subjectChanges.push({
                                     day: dayLabel,
                                     period,
-                                    from: existing.name,
+                                    from: existing.name || "—",
                                     to: data.name,
                                     class: clazz.name,
                                     teachers: data.teachers,
@@ -161,12 +163,12 @@ export default class Schedule {
                                 })
                             }
 
-                            if (JSON.stringify([...existing.teachers].sort()) !== JSON.stringify([...data.teachers].sort())) changes.push({
-                                date: new Date(), type: "teachers", from: existing.teachers, to: data.teachers
+                            if (JSON.stringify([...(existing.teachers ?? [])].sort()) !== JSON.stringify([...data.teachers].sort())) changes.push({
+                                date: now, type: "teachers", from: existing.teachers ?? [], to: data.teachers
                             })
 
                             if (existing.lessonStart !== data.lessonStart || existing.lessonEnd !== data.lessonEnd) changes.push({
-                                date: new Date(), type: "times", from: `${existing.lessonStart}-${existing.lessonEnd}`, to: `${data.lessonStart}-${data.lessonEnd}`
+                                date: now, type: "times", from: `${existing.lessonStart}-${existing.lessonEnd}`, to: `${data.lessonStart}-${data.lessonEnd}`
                             })
                         }
 
@@ -187,15 +189,54 @@ export default class Schedule {
             }
         }
 
-        // delete existing lessons, as overriding them wasn't enough
+        // soft-delete lessons that disappeared so change history remains visible
         for (const [key, existing] of existingMap.entries()) {
-            if (!seenKeys.has(key)) {
-                bulkOps.push({
-                    deleteOne: {
-                        filter: { _id: existing._id }
-                    }
+            if (seenKeys.has(key) || existing.removed) continue
+
+            const now = new Date()
+            const changes: any[] = []
+
+            if (existing.name) changes.push({
+                date: now, type: "name", from: existing.name, to: ""
+            })
+            if (existing.classroom) changes.push({
+                date: now, type: "classroom", from: existing.classroom, to: ""
+            })
+            if ((existing.teachers ?? []).length) changes.push({
+                date: now, type: "teachers", from: existing.teachers, to: []
+            })
+
+            const dayLabel = this.getDayLabel(existing.day)
+            const className = Array.isArray(existing.class) ? existing.class[0] : existing.class
+
+            if (existing.name) {
+                subjectChanges.push({
+                    day: dayLabel,
+                    period: existing.period,
+                    from: existing.name,
+                    to: "—",
+                    class: className,
+                    teachers: existing.teachers ?? [],
+                    classroom: existing.classroom ?? ""
                 })
             }
+
+            const update: any = {
+                $set: {
+                    removed: true,
+                    name: "",
+                    classroom: "",
+                    teachers: []
+                }
+            }
+            if (changes.length) update.$push = { changes: { $each: changes } }
+
+            bulkOps.push({
+                updateOne: {
+                    filter: { _id: existing._id },
+                    update
+                }
+            })
         }
 
         if (bulkOps.length > 0) {
@@ -259,6 +300,16 @@ export default class Schedule {
         const validate = isLastDayOfWeek ? this.index.timesWeekend[times] : this.index.times[times]
 
         return validate ?? null
+    }
+
+    /**
+     * Resolves a short day label from a stored day id (for notifications)
+     */
+    private getDayLabel(dayId: string) {
+        const row = this.index?.daysRows?.find((l: any) => l.id === String(dayId))
+        if (!row) return String(dayId)
+
+        return (row.name ?? "").split(",")[0].trim() || row.short || String(dayId)
     }
 
     /**

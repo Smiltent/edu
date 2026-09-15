@@ -16,6 +16,9 @@ const LessonSchema = new Schema({
     group: [{ type: String, required: true }],
     teachers: [{ type: String, required: true }],
 
+    // soft-deleted when a period disappears from Edupage; keeps change history for the UI
+    removed: { type: Boolean, default: false },
+
     changes: [{
         _id: false,
         date: { type: Date, required: true, default: Date.now },

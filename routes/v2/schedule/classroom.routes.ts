@@ -12,7 +12,7 @@ router.get('/list', async (_, res) => {
         if (hit) return res.json(hit)
 
         const weekDoc = await getCurrentWeekDoc()
-        const data = weekDoc ? await Lesson.distinct('classroom', { week: weekDoc._id }) : []
+        const data = weekDoc ? await Lesson.distinct('classroom', { week: weekDoc._id, removed: { $ne: true } }) : []
 
         const body = { success: true, data }
         cache.set('classroom-list', body, TTL)
@@ -36,7 +36,7 @@ router.get('/:classroom/week/:week', async (req, res) => {
         const weekDoc = await getWeekDoc(week)
         if (!weekDoc) return res.status(404).json({ success: false, data: 'Week not found' })
 
-        const lessons = await Lesson.find({ week: weekDoc._id, classroom })
+        const lessons = await Lesson.find({ week: weekDoc._id, classroom, removed: { $ne: true } })
             .select('-_id -__v -week')
             .sort({ day: 1, period: 1 })
 
