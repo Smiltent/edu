@@ -48,9 +48,10 @@ export default class Schedule {
 
     /**
      * Stores the parsed lesson into the database
+     * @param trackAdditions When true (week update), record blank→lesson history for new slots
      * @returns Subject name changes detected during this parse
      */
-    public async storeLessonData(): Promise<SubjectChange[]> {
+    public async storeLessonData(trackAdditions = false): Promise<SubjectChange[]> {
         if (!this.index) await this.loadIndex(this.week)
 
         const weekObjectId = await Week.findOne({ id: this.week })
@@ -169,6 +170,27 @@ export default class Schedule {
 
                             if (existing.lessonStart !== data.lessonStart || existing.lessonEnd !== data.lessonEnd) changes.push({
                                 date: now, type: "times", from: `${existing.lessonStart}-${existing.lessonEnd}`, to: `${data.lessonStart}-${data.lessonEnd}`
+                            })
+                        } else if (trackAdditions) {
+                            // new card in a previously empty slot (no Lesson doc yet)
+                            changes.push({
+                                date: now, type: "name", from: "", to: data.name
+                            })
+                            changes.push({
+                                date: now, type: "classroom", from: "", to: data.classroom
+                            })
+                            if (data.teachers.length) changes.push({
+                                date: now, type: "teachers", from: [], to: data.teachers
+                            })
+
+                            subjectChanges.push({
+                                day: dayLabel,
+                                period,
+                                from: "—",
+                                to: data.name,
+                                class: clazz.name,
+                                teachers: data.teachers,
+                                classroom: data.classroom
                             })
                         }
 

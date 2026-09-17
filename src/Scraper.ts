@@ -74,7 +74,7 @@ export default class Scraper {
 
                 const parser = new Schedule()
                 await parser.i(week.tt_num)
-                const changes = await parser.storeLessonData()
+                const changes = await parser.storeLessonData(state === "update")
 
                 notifications.push({ week: week.tt_num, type: state, changes })
             })))
