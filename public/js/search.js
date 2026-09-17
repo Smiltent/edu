@@ -59,6 +59,10 @@ export function setup(element, placeholder = t("search.placeholder")) {
         syncInput()
     }
 
+    function isOpen() {
+        return optionsDiv.classList.contains("open")
+    }
+
     function syncInput() {
         const selected = element.options[element.selectedIndex]
         input.value = selected ? selected.textContent : ""
@@ -94,7 +98,7 @@ export function setup(element, placeholder = t("search.placeholder")) {
             div.dataset.value = option.value
             div.dataset.search = fold(option.textContent)
 
-            div.addEventListener("mousedown", (e) => {
+            div.addEventListener("pointerdown", (e) => {
                 e.preventDefault()
                 pick(div)
             })
@@ -118,7 +122,7 @@ export function setup(element, placeholder = t("search.placeholder")) {
     })
 
     input.addEventListener("input", () => {
-        if (!optionsDiv.classList.contains("open")) optionsDiv.classList.add("open")
+        if (!isOpen()) optionsDiv.classList.add("open")
         filter(input.value)
     })
 
@@ -126,7 +130,7 @@ export function setup(element, placeholder = t("search.placeholder")) {
         switch (e.key) {
             case "ArrowDown":
                 e.preventDefault()
-                if (!optionsDiv.classList.contains("open")) return open()
+                if (!isOpen()) return open()
                 return setActive(active + 1)
 
             case "ArrowUp":
@@ -142,7 +146,18 @@ export function setup(element, placeholder = t("search.placeholder")) {
         }
     })
 
-    input.addEventListener("blur", () => close())
+    document.addEventListener("pointerdown", (e) => {
+        if (!isOpen()) return
+        if (wrapper.contains(e.target)) return
+        close()
+        input.blur()
+    }, true)
+
+    input.addEventListener("blur", () => {
+        requestAnimationFrame(() => {
+            if (!wrapper.contains(document.activeElement)) close()
+        })
+    })
 
     element.addEventListener("change", syncInput)
 }

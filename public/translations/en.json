@@ -31,5 +31,21 @@
     "time": "time",
 
     "changes.title": "schedule changes",
-    "changes.close": "close"
+    "changes.close": "close",
+
+    "admin.edit": "edit lesson",
+    "admin.editTitle": "edit lesson",
+    "admin.save": "save",
+    "admin.cancel": "cancel",
+    "admin.revert": "remove site admin changes",
+    "admin.modified": "modified by site admin",
+    "admin.name": "subject",
+    "admin.classroom": "classroom",
+    "admin.teachers": "teachers (comma-separated)",
+    "admin.start": "start",
+    "admin.end": "end",
+    "admin.removed": "mark as removed",
+    "admin.saveFailed": "failed to save lesson",
+    "admin.revertFailed": "failed to remove admin changes",
+    "admin.revertConfirm": "Restore this lesson to the schedule source and remove site admin changes?"
 }

@@ -177,6 +177,117 @@ form, select{
     color: var(--orange);
 }
 
+.admin-edit-btn {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--subtext1);
+    cursor: pointer;
+    line-height: 1.2;
+    font-size: 0.85rem;
+}
+
+.admin-edit-btn:hover {
+    color: var(--yellow);
+}
+
+.admin-modified-tag {
+    color: var(--yellow);
+}
+
+.adminEditModal {
+    width: min(24rem, 100%);
+}
+
+.adminEditForm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+.adminEditForm label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    width: 100%;
+}
+
+.adminEditForm input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.adminFieldLabel {
+    color: var(--subtext1);
+    font-size: 0.85rem;
+}
+
+.adminTimeRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.adminCheckRow {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.45rem !important;
+}
+
+.adminCheckRow input {
+    width: auto;
+    margin: 0;
+}
+
+.adminEditStatus {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.adminEditActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    align-self: stretch;
+    margin-top: 0.25rem;
+}
+
+.adminEditActions .adminRevertBtn {
+    margin-right: auto;
+}
+
+.adminEditActions button {
+    width: auto;
+    margin: 0;
+    background-color: var(--dgray);
+    color: var(--text);
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.adminEditActions button:hover {
+    color: var(--text);
+    filter: brightness(1.08);
+}
+
+.adminEditActions .adminRevertBtn {
+    color: var(--yellow);
+}
+
+.adminEditActions .adminSaveBtn {
+    background-color: var(--orange);
+    color: var(--bg);
+}
+
 .lesson-group-entry {
     padding: 0.35rem;
 }

@@ -1,5 +1,13 @@
-
 import mongoose, { Schema } from 'mongoose'
+
+const LessonSourceSchema = new Schema({
+    classroom: { type: String },
+    name: { type: String },
+    teachers: [{ type: String }],
+    lessonStart: { type: String },
+    lessonEnd: { type: String },
+    removed: { type: Boolean }
+}, { _id: false })
 
 const LessonSchema = new Schema({
     week: { type: Schema.Types.ObjectId, ref: "Week", required: true },
@@ -19,12 +27,21 @@ const LessonSchema = new Schema({
     // soft-deleted when a period disappears from Edupage; keeps change history for the UI
     removed: { type: Boolean, default: false },
 
+    // when set, live fields stay as the admin set them; scraper only updates source
+    adminOverride: {
+        active: { type: Boolean, default: false },
+        modifiedAt: { type: Date },
+        modifiedBy: { type: Schema.Types.ObjectId, ref: "User" },
+        source: { type: LessonSourceSchema }
+    },
+
     changes: [{
         _id: false,
         date: { type: Date, required: true, default: Date.now },
         type: { type: String, required: true },
         from: { type: Schema.Types.Mixed },
-        to: { type: Schema.Types.Mixed }
+        to: { type: Schema.Types.Mixed },
+        by: { type: String } // "admin" when changed by a site admin
     }]
 })
 

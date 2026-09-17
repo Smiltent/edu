@@ -17,9 +17,17 @@ interface AuthRequest extends Request {
  * The session is already resolved by root.middleware, this only gates the route
  */
 function userAuth(req: AuthRequest, res: Response, next: NextFunction) {
-    if (!req.user) return res.status(401).render("error")
+    if (!req.user) {
+        if (wantsJson(req)) return res.status(401).json({ success: false, error: 'Unauthorized' })
+        return res.status(401).render("error")
+    }
 
     return next()
+}
+
+function wantsJson(req: Request) {
+    const accept = req.get('accept') || ''
+    return accept.includes('application/json') || req.path.startsWith('/v2/') || req.originalUrl.startsWith('/v2/')
 }
 
 /**
@@ -29,12 +37,18 @@ function userAuth(req: AuthRequest, res: Response, next: NextFunction) {
  */
 function requirePermission(...permissions: string[]) {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
-        if (!req.user) return res.status(401).render("error")
+        if (!req.user) {
+            if (wantsJson(req)) return res.status(401).json({ success: false, error: 'Unauthorized' })
+            return res.status(401).render("error")
+        }
 
         const userPermissions = new Set(req.user.permissions)
 
         const hasPerm = permissions.some(p => userPermissions.has(p))
-        if (!hasPerm) return res.status(403).render("error")
+        if (!hasPerm) {
+            if (wantsJson(req)) return res.status(403).json({ success: false, error: 'Forbidden' })
+            return res.status(403).render("error")
+        }
 
         return next()
     }

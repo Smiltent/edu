@@ -31,5 +31,21 @@
     "time": "laiks",
 
     "changes.title": "stundas izmaiņas",
-    "changes.close": "aizvērt"
+    "changes.close": "aizvērt",
+
+    "admin.edit": "rediģēt stundu",
+    "admin.editTitle": "rediģēt stundu",
+    "admin.save": "saglabāt",
+    "admin.cancel": "atcelt",
+    "admin.revert": "noņemt admina izmaiņas",
+    "admin.modified": "mainījis admins",
+    "admin.name": "priekšmets",
+    "admin.classroom": "kabinets",
+    "admin.teachers": "skolotāji (atdalīti ar komatu)",
+    "admin.start": "sākums",
+    "admin.end": "beigas",
+    "admin.removed": "atzīmēt kā noņemtu",
+    "admin.saveFailed": "neizdevās saglabāt stundu",
+    "admin.revertFailed": "neizdevās noņemt admina izmaiņas",
+    "admin.revertConfirm": "Atjaunot šo stundu no saraksta avota un noņemt vietnes admina izmaiņas?"
 }

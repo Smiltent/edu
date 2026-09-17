@@ -3,6 +3,10 @@ import { setup as makeSearchable } from "/public/js/search.js"
 
 export const settings = {
     url: `${window.location.origin}/v2/schedule`,
+    adminUrl: `${window.location.origin}/v2/admin/lessons`,
+    isAdmin: !!window.IS_ADMIN,
+    type: null,
+    table: null,
     weekData: null,
     values: {
         week: null,
@@ -126,22 +130,34 @@ async function getWeekData(type, week, getter) {
                     if (lessons) {
                         arr.push(lessons
                             .sort((a, b) => {
-                                if (a.group[0] === "all") return -1
-                                if (b.group[0] === "all") return 1
-                                
-                                return a.group[0].localeCompare(b.group[0])
+                                const ga = Array.isArray(a.group) ? a.group[0] : a.group
+                                const gb = Array.isArray(b.group) ? b.group[0] : b.group
+                                if (ga === "all") return -1
+                                if (gb === "all") return 1
+                                return String(ga ?? "").localeCompare(String(gb ?? ""))
                             })
-                            .map(l => ({
-                                start: l.lessonStart,
-                                end: l.lessonEnd,
-                                name: l.name,
-                                teacher: l.teachers[0],
-                                classroom: l.classroom,
-                                class: l.class.join(", "),
-                                group: l.group[0] === "all" ? null : l.group[0].replace("grupa", "gr."),
-                                removed: !!l.removed,
-                                changes: Array.isArray(l.changes) ? l.changes : []
-                            })))
+                            .map(l => {
+                                const groups = Array.isArray(l.group) ? l.group : [l.group].filter(Boolean)
+                                const classes = Array.isArray(l.class) ? l.class : [l.class].filter(Boolean)
+                                const teachers = Array.isArray(l.teachers) ? l.teachers : [l.teachers].filter(Boolean)
+                                const group0 = groups[0]
+
+                                return {
+                                    id: l._id,
+                                    start: l.lessonStart,
+                                    end: l.lessonEnd,
+                                    name: l.name,
+                                    teacher: teachers[0],
+                                    teachers,
+                                    classroom: l.classroom,
+                                    class: classes.join(", "),
+                                    group: !group0 || group0 === "all" ? null : String(group0).replace("grupa", "gr."),
+                                    removed: !!l.removed,
+                                    adminModified: !!l.adminOverride?.active,
+                                    adminModifiedAt: l.adminOverride?.modifiedAt ?? null,
+                                    changes: Array.isArray(l.changes) ? l.changes : []
+                                }
+                            }))
                     } else {
                         arr.push(null) 
                     }
@@ -227,28 +243,49 @@ function createTable(type, container) {
                         slot !== null && slot.some(l => !l.removed)
                     )
 
-                    if (hasLessonAfter || removedLessons.some(l => l.changes?.length)) {
+                    if (hasLessonAfter || removedLessons.some(l => l.changes?.length || l.adminModified)) {
                         cellContainer.style.backgroundColor = "var(--dgray)"
                     }
 
-                    const withChanges = removedLessons.find(l => l.changes?.length)
-                    if (withChanges) {
+                    const withChanges = removedLessons.find(l => l.changes?.length || l.adminModified)
+                    const editable = settings.isAdmin
+                        ? (removedLessons.find(l => l.id) ?? null)
+                        : null
+
+                    if (withChanges || editable) {
                         const body = document.createElement('div')
                         body.className = 'lesson-body'
 
-                        const btn = document.createElement('button')
-                        btn.type = 'button'
-                        btn.className = 'change-btn'
-                        btn.title = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
-                        btn.setAttribute('aria-label', btn.title)
-                        btn.innerHTML = '<i class="fa-solid fa-code-compare"></i>'
-                        btn.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            openChangesModal(withChanges, withChanges.changes, type)
-                        })
+                        if (withChanges) {
+                            const btn = document.createElement('button')
+                            btn.type = 'button'
+                            btn.className = 'change-btn'
+                            btn.title = tr("changes.title", { en: "schedule changes", lv: "saraksta izmaiņas" })
+                            btn.setAttribute('aria-label', btn.title)
+                            btn.innerHTML = '<i class="fa-solid fa-code-compare"></i>'
+                            btn.addEventListener('click', (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openChangesModal(withChanges, withChanges.changes, type)
+                            })
+                            body.appendChild(btn)
+                        }
 
-                        body.appendChild(btn)
+                        if (editable) {
+                            const editBtn = document.createElement('button')
+                            editBtn.type = 'button'
+                            editBtn.className = 'admin-edit-btn'
+                            editBtn.title = tr("admin.edit", { en: "edit lesson", lv: "rediģēt stundu" })
+                            editBtn.setAttribute('aria-label', editBtn.title)
+                            editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>'
+                            editBtn.addEventListener('click', (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openAdminEditModal(editable)
+                            })
+                            body.appendChild(editBtn)
+                        }
+
                         cellContainer.appendChild(body)
                     }
                 } else {
@@ -291,7 +328,7 @@ function createTable(type, container) {
                         const body = document.createElement('div')
                         body.className = 'lesson-body'
 
-                        if (lesson.changes?.length) {
+                        if (lesson.changes?.length || lesson.adminModified) {
                             const btn = document.createElement('button')
                             btn.type = 'button'
                             btn.className = 'change-btn'
@@ -306,6 +343,21 @@ function createTable(type, container) {
                                 openChangesModal(lesson, lesson.changes, type)
                             })
                             body.appendChild(btn)
+                        }
+
+                        if (settings.isAdmin && lesson.id) {
+                            const editBtn = document.createElement('button')
+                            editBtn.type = 'button'
+                            editBtn.className = 'admin-edit-btn'
+                            editBtn.title = tr("admin.edit", { en: "edit lesson", lv: "rediģēt stundu" })
+                            editBtn.setAttribute('aria-label', editBtn.title)
+                            editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>'
+                            editBtn.addEventListener('click', (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openAdminEditModal(lesson)
+                            })
+                            body.appendChild(editBtn)
                         }
 
                         const text = document.createElement('div')
@@ -453,23 +505,26 @@ function applyChange(state, change, reverse = false) {
 function buildChangeSnapshots(lesson, changes) {
     const sorted = [...changes].sort((a, b) => new Date(a.date) - new Date(b.date))
     const state = copyLesson(lesson)
+    const adminAt = lesson.adminModifiedAt ? new Date(lesson.adminModifiedAt).getTime() : null
 
-    // walk newest → oldest to recover the original lesson
     for (let i = sorted.length - 1; i >= 0; i--) {
         applyChange(state, sorted[i], true)
     }
 
-    const snapshots = [{ lesson: copyLesson(state), date: null }]
+    const snapshots = [{ lesson: copyLesson(state), date: null, admin: false }]
 
     for (const change of sorted) {
         applyChange(state, change, false)
         const last = snapshots[snapshots.length - 1]
-        const sameMoment = last.date && new Date(last.date).getTime() === new Date(change.date).getTime()
+        const changeTime = new Date(change.date).getTime()
+        const sameMoment = last.date && new Date(last.date).getTime() === changeTime
+        const isAdmin = change.by === "admin" || (adminAt !== null && changeTime === adminAt)
 
         if (sameMoment) {
             last.lesson = copyLesson(state)
+            last.admin = last.admin || isAdmin
         } else {
-            snapshots.push({ lesson: copyLesson(state), date: change.date })
+            snapshots.push({ lesson: copyLesson(state), date: change.date, admin: isAdmin })
         }
     }
 
@@ -556,8 +611,8 @@ function openChangesModal(lesson, changes, type) {
     const timeline = document.createElement("div")
     timeline.className = "changeTimeline"
 
-    // newest on top, oldest at the bottom — arrows point up
-    const snapshots = buildChangeSnapshots(lesson, changes).reverse()
+    const history = Array.isArray(changes) ? changes : []
+    const snapshots = buildChangeSnapshots(lesson, history).reverse()
 
     snapshots.forEach((snapshot, i) => {
         if (i > 0) {
@@ -573,7 +628,19 @@ function openChangesModal(lesson, changes, type) {
         if (snapshot.date) {
             const meta = document.createElement("div")
             meta.className = "changeMeta"
-            meta.textContent = changeDateFmt.format(new Date(snapshot.date))
+            meta.append(document.createTextNode(changeDateFmt.format(new Date(snapshot.date))))
+
+            if (snapshot.admin) {
+                const tag = document.createElement("span")
+                tag.className = "admin-modified-tag"
+                tag.textContent = tr("admin.modified", {
+                    en: "modified by site admin",
+                    lv: "mainījis vietnes admins"
+                })
+                meta.append(document.createTextNode(" · "))
+                meta.append(tag)
+            }
+
             item.appendChild(meta)
         }
 
@@ -583,6 +650,187 @@ function openChangesModal(lesson, changes, type) {
 
     body.appendChild(timeline)
     overlay.hidden = false
+}
+
+//
+//   admin edit
+//
+let adminEditModal = null
+
+async function reloadTable() {
+    if (!settings.type || !settings.table) return
+    await getWeekData(settings.type, settings.values.week, settings.values.main)
+    createTable(settings.type, settings.table)
+}
+
+function ensureAdminEditModal() {
+    if (adminEditModal) return adminEditModal
+
+    const overlay = document.createElement("div")
+    overlay.className = "modalOverlay"
+    overlay.hidden = true
+    overlay.innerHTML = `
+        <div class="modal adminEditModal" role="dialog" aria-modal="true" aria-labelledby="adminEditTitle">
+            <div class="modalHeader">
+                <h2 id="adminEditTitle"></h2>
+                <button type="button" class="modalClose">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form class="adminEditForm">
+                <label>
+                    <span class="adminFieldLabel" data-field="name"></span>
+                    <input name="name" type="text" autocomplete="off" required>
+                </label>
+                <label>
+                    <span class="adminFieldLabel" data-field="classroom"></span>
+                    <input name="classroom" type="text" autocomplete="off">
+                </label>
+                <label>
+                    <span class="adminFieldLabel" data-field="teachers"></span>
+                    <input name="teachers" type="text" autocomplete="off">
+                </label>
+                <div class="adminTimeRow">
+                    <label>
+                        <span class="adminFieldLabel" data-field="start"></span>
+                        <input name="lessonStart" type="text" autocomplete="off" placeholder="8:30" required>
+                    </label>
+                    <label>
+                        <span class="adminFieldLabel" data-field="end"></span>
+                        <input name="lessonEnd" type="text" autocomplete="off" placeholder="9:50" required>
+                    </label>
+                </div>
+                <label class="adminCheckRow">
+                    <input name="removed" type="checkbox">
+                    <span class="adminFieldLabel" data-field="removed"></span>
+                </label>
+                <p class="adminEditStatus c-yellow" hidden></p>
+                <div class="adminEditActions actionBtns">
+                    <button type="button" class="adminRevertBtn" hidden></button>
+                    <button type="button" class="adminCancelBtn"></button>
+                    <button type="submit" class="adminSaveBtn"></button>
+                </div>
+            </form>
+        </div>
+    `
+
+    const close = () => { overlay.hidden = true }
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close()
+    })
+    overlay.querySelector(".modalClose").addEventListener("click", close)
+    overlay.querySelector(".adminCancelBtn").addEventListener("click", close)
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !overlay.hidden) close()
+    })
+
+    document.body.appendChild(overlay)
+    adminEditModal = overlay
+    return overlay
+}
+
+function openAdminEditModal(lesson) {
+    const overlay = ensureAdminEditModal()
+    const form = overlay.querySelector(".adminEditForm")
+    const title = overlay.querySelector("#adminEditTitle")
+    const status = overlay.querySelector(".adminEditStatus")
+    const revertBtn = overlay.querySelector(".adminRevertBtn")
+    const closeBtn = overlay.querySelector(".modalClose")
+
+    title.textContent = tr("admin.editTitle", { en: "edit lesson", lv: "rediģēt stundu" })
+    closeBtn.setAttribute("aria-label", tr("admin.cancel", { en: "cancel", lv: "atcelt" }))
+
+    overlay.querySelector('[data-field="name"]').textContent = tr("admin.name", { en: "subject", lv: "priekšmets" })
+    overlay.querySelector('[data-field="classroom"]').textContent = tr("admin.classroom", { en: "classroom", lv: "kabinets" })
+    overlay.querySelector('[data-field="teachers"]').textContent = tr("admin.teachers", { en: "teachers (comma-separated)", lv: "skolotāji (atdalīti ar komatu)" })
+    overlay.querySelector('[data-field="start"]').textContent = tr("admin.start", { en: "start", lv: "sākums" })
+    overlay.querySelector('[data-field="end"]').textContent = tr("admin.end", { en: "end", lv: "beigas" })
+    overlay.querySelector('[data-field="removed"]').textContent = tr("admin.removed", { en: "mark as removed", lv: "atzīmēt kā noņemtu" })
+
+    form.name.value = lesson.name ?? ""
+    form.classroom.value = lesson.classroom ?? ""
+    form.teachers.value = (lesson.teachers?.length ? lesson.teachers : [lesson.teacher].filter(Boolean)).join(", ")
+    form.lessonStart.value = lesson.start ?? ""
+    form.lessonEnd.value = lesson.end ?? ""
+    form.removed.checked = !!lesson.removed
+
+    status.hidden = true
+    status.textContent = ""
+
+    overlay.querySelector(".adminCancelBtn").textContent = tr("admin.cancel", { en: "cancel", lv: "atcelt" })
+    overlay.querySelector(".adminSaveBtn").textContent = tr("admin.save", { en: "save", lv: "saglabāt" })
+
+    revertBtn.hidden = !lesson.adminModified
+    revertBtn.textContent = tr("admin.revert", { en: "remove site admin changes", lv: "noņemt vietnes admina izmaiņas" })
+    revertBtn.onclick = async () => {
+        const ok = window.confirm(tr("admin.revertConfirm", {
+            en: "Restore this lesson to the schedule source and remove site admin changes?",
+            lv: "Atjaunot šo stundu no saraksta avota un noņemt vietnes admina izmaiņas?"
+        }))
+        if (!ok) return
+
+        revertBtn.disabled = true
+        try {
+            const res = await fetch(`${settings.adminUrl}/${encodeURIComponent(lesson.id)}/override`, {
+                method: "DELETE",
+                headers: { Accept: "application/json" }
+            })
+            const data = await res.json().catch(() => ({ success: false }))
+            if (!res.ok || !data.success) throw new Error(data.error || "revert failed")
+
+            overlay.hidden = true
+            await reloadTable()
+        } catch (err) {
+            status.hidden = false
+            status.textContent = tr("admin.revertFailed", { en: "failed to remove admin changes", lv: "neizdevās noņemt admina izmaiņas" })
+            console.warn(err)
+        } finally {
+            revertBtn.disabled = false
+        }
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault()
+        status.hidden = true
+
+        const payload = {
+            name: form.name.value.trim(),
+            classroom: form.classroom.value.trim(),
+            teachers: form.teachers.value.split(",").map(t => t.trim()).filter(Boolean),
+            lessonStart: form.lessonStart.value.trim(),
+            lessonEnd: form.lessonEnd.value.trim(),
+            removed: !!form.removed.checked
+        }
+
+        const saveBtn = overlay.querySelector(".adminSaveBtn")
+        saveBtn.disabled = true
+        try {
+            const res = await fetch(`${settings.adminUrl}/${encodeURIComponent(lesson.id)}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+            const data = await res.json().catch(() => ({ success: false }))
+            if (!res.ok || !data.success) throw new Error(data.error || "save failed")
+
+            overlay.hidden = true
+            await reloadTable()
+        } catch (err) {
+            status.hidden = false
+            status.textContent = tr("admin.saveFailed", { en: "failed to save lesson", lv: "neizdevās saglabāt stundu" })
+            console.warn(err)
+        } finally {
+            saveBtn.disabled = false
+        }
+    }
+
+    overlay.hidden = false
+    form.name.focus()
 }
 
 //
@@ -674,6 +922,9 @@ function randomColorFromString(str) {
 //
 export async function setup(type, ignore = [false, false], searchable = true) {
     const table = document.getElementById('tableContainer')
+    settings.type = type
+    settings.table = table
+    settings.isAdmin = !!window.IS_ADMIN
 
     // get information from API
     await getSchoolData(type, ignore, searchable)

@@ -20,6 +20,7 @@
     <script>
         window.LANG = "<%= lang %>"
         window.TRANSLATIONS = <%- translations %>
+        window.IS_ADMIN = <%= !!(typeof user !== 'undefined' && user && user.permissions && user.permissions.includes("admin")) %>
 
         window.t = (key, vars) => {
             let text = window.TRANSLATIONS[key] ?? key

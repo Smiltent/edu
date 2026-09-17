@@ -73,7 +73,7 @@ export default class Schedule {
         }
 
         const existingLessons = await Lesson.find({ week: weekObjectId })
-            .select('period day class group classroom name teachers lessonStart lessonEnd removed')
+            .select('period day class group classroom name teachers lessonStart lessonEnd removed adminOverride')
             .lean()
         const existingMap = new Map(
             existingLessons.map(l => [
@@ -143,8 +143,9 @@ export default class Schedule {
                         const existing = existingMap.get(key)
                         const changes: any[] = []
                         const now = new Date()
+                        const overridden = !!existing?.adminOverride?.active
 
-                        if (existing) {
+                        if (existing && !overridden) {
                             if (existing.classroom !== data.classroom) changes.push({
                                 date: now, type: "classroom", from: existing.classroom, to: data.classroom
                             })
@@ -171,8 +172,7 @@ export default class Schedule {
                             if (existing.lessonStart !== data.lessonStart || existing.lessonEnd !== data.lessonEnd) changes.push({
                                 date: now, type: "times", from: `${existing.lessonStart}-${existing.lessonEnd}`, to: `${data.lessonStart}-${data.lessonEnd}`
                             })
-                        } else if (trackAdditions) {
-                            // new card in a previously empty slot (no Lesson doc yet)
+                        } else if (!existing && trackAdditions) {
                             changes.push({
                                 date: now, type: "name", from: "", to: data.name
                             })
@@ -194,7 +194,9 @@ export default class Schedule {
                             })
                         }
 
-                        const update: any = { $set: data }
+                        const update: any = overridden
+                            ? { $set: { "adminOverride.source": data } }
+                            : { $set: data }
                         if (changes.length) update.$push = { changes: { $each: changes } }
 
                         bulkOps.push({
@@ -211,46 +213,67 @@ export default class Schedule {
             }
         }
 
-        // soft-delete lessons that disappeared so change history remains visible
         for (const [key, existing] of existingMap.entries()) {
-            if (seenKeys.has(key) || existing.removed) continue
+            if (seenKeys.has(key)) continue
+
+            const overridden = !!existing.adminOverride?.active
+            const sourceRemoved = !!existing.adminOverride?.source?.removed
+            if (!overridden && existing.removed) continue
+            if (overridden && sourceRemoved) continue
 
             const now = new Date()
             const changes: any[] = []
 
-            if (existing.name) changes.push({
-                date: now, type: "name", from: existing.name, to: ""
-            })
-            if (existing.classroom) changes.push({
-                date: now, type: "classroom", from: existing.classroom, to: ""
-            })
-            if ((existing.teachers ?? []).length) changes.push({
-                date: now, type: "teachers", from: existing.teachers, to: []
-            })
-
-            const dayLabel = this.getDayLabel(existing.day)
-            const className = Array.isArray(existing.class) ? existing.class[0] : existing.class
-
-            if (existing.name) {
-                subjectChanges.push({
-                    day: dayLabel,
-                    period: existing.period,
-                    from: existing.name,
-                    to: "—",
-                    class: className,
-                    teachers: existing.teachers ?? [],
-                    classroom: existing.classroom ?? ""
+            if (!overridden) {
+                if (existing.name) changes.push({
+                    date: now, type: "name", from: existing.name, to: ""
                 })
-            }
+                if (existing.classroom) changes.push({
+                    date: now, type: "classroom", from: existing.classroom, to: ""
+                })
+                if ((existing.teachers ?? []).length) changes.push({
+                    date: now, type: "teachers", from: existing.teachers, to: []
+                })
 
-            const update: any = {
-                $set: {
-                    removed: true,
-                    name: "",
-                    classroom: "",
-                    teachers: []
+                const dayLabel = this.getDayLabel(existing.day)
+                const className = String(
+                    (Array.isArray(existing.class) ? existing.class[0] : existing.class) ?? ""
+                )
+
+                if (existing.name) {
+                    subjectChanges.push({
+                        day: dayLabel,
+                        period: existing.period,
+                        from: existing.name,
+                        to: "—",
+                        class: className,
+                        teachers: existing.teachers ?? [],
+                        classroom: existing.classroom ?? ""
+                    })
                 }
             }
+
+            const update: any = overridden
+                ? {
+                    $set: {
+                        "adminOverride.source": {
+                            classroom: "",
+                            name: "",
+                            teachers: [],
+                            lessonStart: existing.adminOverride?.source?.lessonStart ?? existing.lessonStart,
+                            lessonEnd: existing.adminOverride?.source?.lessonEnd ?? existing.lessonEnd,
+                            removed: true
+                        }
+                    }
+                }
+                : {
+                    $set: {
+                        removed: true,
+                        name: "",
+                        classroom: "",
+                        teachers: []
+                    }
+                }
             if (changes.length) update.$push = { changes: { $each: changes } }
 
             bulkOps.push({
