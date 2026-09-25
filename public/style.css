@@ -288,6 +288,18 @@ form, select{
     color: var(--bg);
 }
 
+#remapList button {
+    width: auto;
+    margin: 0;
+    background-color: var(--dgray);
+    color: var(--text);
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
 .lesson-group-entry {
     padding: 0.35rem;
 }

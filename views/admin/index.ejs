@@ -21,6 +21,19 @@
         <input type="text" name="type" placeholder="type" value="update" required>
         <input type="submit" value="send specific test notification">
     </form>
+
+    <h2>subject remaps</h2>
+    <p id="remapStatus" class="c-yellow"></p>
+    <form id="remapForm">
+        <input type="text" name="classes" placeholder="classes (comma: IPa24, IPb24)" required>
+        <input type="text" name="groups" placeholder="groups (optional, comma)">
+        <input type="text" name="teachers" placeholder="teachers (optional, comma)">
+        <input type="text" name="matchName" placeholder="from subject (Edupage)" required>
+        <input type="text" name="toName" placeholder="to subject" required>
+        <input type="text" name="note" placeholder="note (optional)">
+        <input type="submit" value="add remap">
+    </form>
+    <div id="remapList" class="flex-col"></div>
 </div>
 
 <script type="module" src="/public/js/admin.js"></script>

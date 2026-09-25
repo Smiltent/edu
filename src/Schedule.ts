@@ -3,6 +3,11 @@ import RawScheduleData from "@/models/RawScheduleData.ts"
 import { times, timesWeekend } from "@/util/time.ts"
 import Lesson from "@/models/Lesson.ts"
 import Week from "@/models/Week.ts"
+import {
+    applySubjectRemap,
+    isSilentSubjectRemap,
+    loadEnabledRemapRules
+} from "@/services/subjectRemap.service.ts"
 
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
     for (let i = 0; i < retries; i++) {
@@ -82,6 +87,7 @@ export default class Schedule {
             ])
         )
 
+        const remapRules = await loadEnabledRemapRules()
         const bulkOps: any[] = []
         const seenKeys = new Set<string>()
         const subjectChanges: SubjectChange[] = []
@@ -128,10 +134,18 @@ export default class Schedule {
                             group: groupName
                         }
 
+                        const teachersList = teachers?.map((t: any) => t.name) ?? []
+                        const scrapedName = subject?.name ?? "N/A"
+                        const remapCtx = {
+                            class: clazz.name,
+                            group: groupName,
+                            teachers: teachersList
+                        }
+
                         const data = {
                             classroom: classroom?.name ?? "N/A",
-                            name: subject?.name ?? "N/A",
-                            teachers: teachers?.map((t: any) => t.name) ?? [],
+                            name: applySubjectRemap(scrapedName, remapCtx, remapRules),
+                            teachers: teachersList,
                             lessonStart: times[0],
                             lessonEnd: times[1],
                             removed: false
@@ -151,18 +165,23 @@ export default class Schedule {
                             })
 
                             if (existing.name !== data.name) {
-                                changes.push({ 
-                                    date: now, type: "name", from: existing.name, to: data.name
-                                })
-                                subjectChanges.push({
-                                    day: dayLabel,
-                                    period,
-                                    from: existing.name || "—",
-                                    to: data.name,
-                                    class: clazz.name,
-                                    teachers: data.teachers,
-                                    classroom: data.classroom
-                                })
+                                const silent = isSilentSubjectRemap(
+                                    existing.name, data.name, remapCtx, remapRules
+                                )
+                                if (!silent) {
+                                    changes.push({
+                                        date: now, type: "name", from: existing.name, to: data.name
+                                    })
+                                    subjectChanges.push({
+                                        day: dayLabel,
+                                        period,
+                                        from: existing.name || "—",
+                                        to: data.name,
+                                        class: clazz.name,
+                                        teachers: data.teachers,
+                                        classroom: data.classroom
+                                    })
+                                }
                             }
 
                             if (JSON.stringify([...(existing.teachers ?? [])].sort()) !== JSON.stringify([...data.teachers].sort())) changes.push({
