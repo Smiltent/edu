@@ -9,10 +9,6 @@ const BLUE = chalk.bgHex("#1e66f5")
 const GRAY = chalk.hex("#232634")
 const RED = chalk.bgHex("#d20f39")
 
-/**
- * Get the current time in a specific format
- * @returns Current time in HH:MM:SS:MS format
- */
 function getTime() {
     const date = new Date()
 
@@ -25,9 +21,6 @@ function getTime() {
     return `${hours}:${minutes}:${seconds}.${milliseconds}`
 }
 
-/**
- * Extract the caller file from the stack trace
- */
 function getCaller() {
     const stack = new Error().stack
     if (!stack) return "unknown"

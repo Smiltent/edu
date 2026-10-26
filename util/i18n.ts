@@ -48,13 +48,6 @@ export function dictionary(lang: string): Dict {
     return translations[lang] ?? translations[DEFAULT_LANG] ?? {}
 }
 
-/**
- * Translate a key, falling back to the default language and then to the key
- * itself - a missing string should never blank out the page
- * @param lang language to translate into
- * @param key translation key, eg. "lookup.class"
- * @param vars values for %placeholders% inside the string
- */
 export function t(lang: string, key: string, vars?: Record<string, string | number>): string {
     loadTranslations()
 

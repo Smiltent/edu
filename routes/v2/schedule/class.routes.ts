@@ -1,5 +1,5 @@
 
-import { getWeekDoc, getCurrentWeekDoc, TTL } from '@/util/weeks.ts'
+import { getWeekDoc, TTL } from '@/util/weeks.ts'
 import Lesson from '@/models/Lesson.ts'
 import cache from '@/util/cache.ts'
 
@@ -11,8 +11,7 @@ router.get('/list', async (_, res) => {
         const hit = cache.get('class-list')
         if (hit) return res.json(hit)
 
-        const weekDoc = await getCurrentWeekDoc()
-        const data = weekDoc ? await Lesson.distinct('class', { week: weekDoc._id }) : []
+        const data = await Lesson.distinct('class', {})
 
         const body = { success: true, data }
         cache.set('class-list', body, TTL)
